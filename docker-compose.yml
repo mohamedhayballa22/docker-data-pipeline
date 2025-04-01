@@ -1,0 +1,32 @@
+version: '3'
+
+services:
+  scraper:
+    build: ./scraper
+    volumes:
+      - ./data:/app/data
+    restart: "no"  # Run once and exit
+
+  transformer:
+    build: ./transformer
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - scraper
+    restart: "no"  # Run once and exit
+
+  api:
+    build: ./api
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "8000:8000"
+    depends_on:
+      - transformer
+
+  web-ui:
+    build: ./web-ui
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
