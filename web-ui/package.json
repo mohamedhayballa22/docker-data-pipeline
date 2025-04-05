@@ -1,0 +1,9 @@
+{
+    "name": "data-pipeline-ui",
+    "version": "1.0.0",
+    "description": "Simple UI for data pipeline demo",
+    "main": "src/app.js",
+    "scripts": {
+      "start": "http-server -p 3000"
+    }
+  }
