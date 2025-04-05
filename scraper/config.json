@@ -1,0 +1,9 @@
+{
+    "data_sources": [
+      {
+        "name": "example_data",
+        "url": "https://jsonplaceholder.typicode.com/posts"
+      }
+    ],
+    "output_path": "/app/data/raw_data.json"
+  }
