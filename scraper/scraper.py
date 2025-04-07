@@ -340,8 +340,6 @@ def main():
 
     save_to_json(scraped_data, OUTPUT_PATH)
 
-    logger.info("--- Script Finished ---")
-
 
 if __name__ == "__main__":
     main()

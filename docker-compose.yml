@@ -20,7 +20,14 @@ services:
       - ./data:/app/data
     environment:
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-    restart: "no"  # Run once and exit
+      - JOB_TITLES="${JOB_TITLES}"
+      - LOCATION="${LOCATION}"
+      - TIME_FILTER="${TIME_FILTER}"
+      - NUM_PAGES="${NUM_PAGES}"
+      - MAX_JOBS="${MAX_JOBS}"
+      - OUTPUT_DIR="${OUTPUT_DIR}"
+      - OUTPUT_FILENAME="${OUTPUT_FILENAME}"
+    restart: "no"
     
   loader:
     build: ./loader
