@@ -1,8 +1,8 @@
-import json
-import os
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from models import DataItem, DataResponse
+from sqlalchemy.orm import Session
+from typing import List
+from models import JobItem, get_db, Job
 
 app = FastAPI(title="Data Pipeline API")
 
@@ -15,28 +15,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
-def read_root():
-    return {"message": "Data Pipeline API is running"}
-
-@app.get("/data", response_model=DataResponse)
-def get_data():
-    data_path = "/app/data/transformed_data.json"
-    
-    if not os.path.exists(data_path):
-        raise HTTPException(status_code=404, detail="Data not found. The transformer might still be processing.")
-    
-    try:
-        with open(data_path, "r") as f:
-            data = json.load(f)
-        
-        return DataResponse(
-            items=[DataItem(**item) for item in data],
-            count=len(data)
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error reading data: {str(e)}")
-
 @app.get("/health")
 def health_check():
     return {"status": "healthy"}
+
+@app.get("/data", response_model=List[JobItem])
+def get_data(db: Session = Depends(get_db)):
+    try:
+        # Query all jobs with their related skills
+        jobs = db.query(Job).all()
+        
+        # JobItem will automatically convert from SQLAlchemy models thanks to from_attributes=True
+        return jobs
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
