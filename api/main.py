@@ -4,8 +4,6 @@ from sqlalchemy.orm import Session
 from typing import List
 from models import JobItem, get_db, Job
 import subprocess
-import os
-import time
 
 app = FastAPI(title="Data Pipeline API")
 
