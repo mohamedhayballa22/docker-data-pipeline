@@ -28,6 +28,7 @@ services:
       - OUTPUT_DIR="${OUTPUT_DIR}"
       - OUTPUT_FILENAME="${OUTPUT_FILENAME}"
     restart: "no"
+    profiles: [jobs]
     
   loader:
     build: ./loader
@@ -38,6 +39,7 @@ services:
     environment:
       - DATABASE_URL=${DATABASE_URL}
     restart: "no"
+    profiles: [jobs]
 
   api:
     build: ./api
