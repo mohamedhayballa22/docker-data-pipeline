@@ -74,7 +74,7 @@ def main():
         logger.error("DATABASE_URL environment variable not set")
         sys.exit(1)
     
-    logger.info(f"Connecting to database: {database_url}")
+    logger.info(f"Connecting to database..")
     engine = create_engine(database_url)
     
     # Create session
@@ -83,7 +83,7 @@ def main():
     
     # Find the latest transformed data file
     data_dir = '/app/data'
-    transformed_files = [f for f in os.listdir(data_dir) if f.endswith('.json')]
+    transformed_files = [f for f in os.listdir(data_dir)]
     
     if not transformed_files:
         logger.error("No transformed data files found")
