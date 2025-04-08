@@ -20,13 +20,13 @@ services:
       - ./data:/app/data
     environment:
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - JOB_TITLES="${JOB_TITLES}"
-      - LOCATION="${LOCATION}"
-      - TIME_FILTER="${TIME_FILTER}"
-      - NUM_PAGES="${NUM_PAGES}"
-      - MAX_JOBS="${MAX_JOBS}"
-      - OUTPUT_DIR="${OUTPUT_DIR}"
-      - OUTPUT_FILENAME="${OUTPUT_FILENAME}"
+      - JOB_TITLES=${JOB_TITLES}
+      - LOCATION=${LOCATION}
+      - TIME_FILTER=${TIME_FILTER}
+      - NUM_PAGES=${NUM_PAGES}
+      - MAX_JOBS=${MAX_JOBS}
+      - OUTPUT_DIR=/app/data
+      - OUTPUT_FILENAME=${OUTPUT_FILENAME}
     restart: "no"
     profiles: [jobs]
     
