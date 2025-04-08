@@ -55,9 +55,12 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - loader
+      - db
     environment:
       - DATABASE_URL=${DATABASE_URL}
+      - COMPOSE_PROJECT_NAME=docker-data-pipeline
+    networks:
+      - default
 
   web-ui:
     build: ./web-ui
