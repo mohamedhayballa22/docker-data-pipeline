@@ -26,6 +26,7 @@ USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTM
 HEADERS = {'User-Agent': USER_AGENT}
 
 OUTPUT_DIR = os.environ.get("OUTPUT_DIR", "/app/data")
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 OUTPUT_FILENAME = os.environ.get("OUTPUT_FILENAME", "jobs.json")
 OUTPUT_PATH = os.path.join(OUTPUT_DIR, OUTPUT_FILENAME)
 
