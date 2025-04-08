@@ -1,15 +1,15 @@
-FROM node:14-alpine as build
+FROM node:20-slim
 
 WORKDIR /app
 
-# Install a simple HTTP server for serving static content
-RUN npm install -g http-server
+# Copy package.json first to leverage Docker cache for npm install
+COPY package.json .
+RUN npm install
 
+# Copy all files
 COPY . .
 
-# No build step needed for this simple example
-# Just use the static HTML/JS
+EXPOSE 3000
 
-FROM nginx:alpine
-COPY --from=build /app /usr/share/nginx/html
-EXPOSE 80
+# Use a simple HTTP server to serve static files
+CMD ["npx", "serve", "-s", ".", "-l", "3000"]
