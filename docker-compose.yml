@@ -13,11 +13,13 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
     restart: unless-stopped
+    networks:
+      - default
 
   scraper:
     build: ./scraper
     volumes:
-      - ./data:/app/data
+      - pipeline_data:/app/data
     environment:
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - JOB_TITLES=${JOB_TITLES}
@@ -27,19 +29,21 @@ services:
       - MAX_JOBS=${MAX_JOBS}
       - OUTPUT_DIR=/app/data
       - OUTPUT_FILENAME=${OUTPUT_FILENAME}
-    restart: "no"
-    profiles: [jobs]
+    restart: unless-stopped
+    networks:
+      - default
     
   loader:
     build: ./loader
     volumes:
-      - ./data:/app/data
-    depends_on:
-      - scraper
+      - pipeline_data:/app/data
     environment:
       - DATABASE_URL=${DATABASE_URL}
-    restart: "no"
-    profiles: [jobs]
+    depends_on:
+      - db
+    restart: unless-stopped
+    networks:
+      - default
 
   api:
     build: ./api
@@ -59,6 +63,12 @@ services:
       - "3000:80"
     depends_on:
       - api
+    networks:
+      - default
 
 volumes:
   postgres_data:
+  pipeline_data:
+
+networks:
+  default:
