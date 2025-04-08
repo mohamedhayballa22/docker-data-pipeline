@@ -2,6 +2,8 @@ import docker
 from docker.errors import APIError, NotFound
 import os
 
+docker_client = None
+
 def get_docker_client():
     """Initializes and returns a Docker client instance."""
     global docker_client
