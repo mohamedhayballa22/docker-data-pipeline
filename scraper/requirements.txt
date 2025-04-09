@@ -1,4 +1,3 @@
-requests
-bs4
-google-generativeai
-python-dotenv
+requests==2.32.3
+bs4==0.0.2
+google-generativeai==0.8.4
