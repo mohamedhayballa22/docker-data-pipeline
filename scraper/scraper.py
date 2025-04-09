@@ -6,19 +6,10 @@ import google.generativeai as genai
 import json
 import os
 import sys
-import logging
 from typing import List, Dict, Optional, Any
-from dotenv import load_dotenv
+from logger.logger import get_logger
 
-load_dotenv()
-
-# --- Logging Configuration ---
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler()]
-)
-logger = logging.getLogger(__name__)
+logger = get_logger("api")
 
 # --- Constants and Configuration ---
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
