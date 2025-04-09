@@ -1,22 +1,13 @@
 import json
 import os
 import sys
-import logging
 from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from models import Job, JobSkill
-from dotenv import load_dotenv
+from logger.logger import get_logger
 
-load_dotenv()
-
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler()]
-)
-logger = logging.getLogger('loader')
+logger = get_logger("api")
 
 def parse_date(date_str):
     """Parse date string into a datetime.date object."""
