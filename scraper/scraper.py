@@ -371,7 +371,7 @@ def main():
     if not job_titles_str:
         logger.error("JOB_TITLES environment variable is required.")
         sys.exit(1)
-    job_titles = job_titles_str.split()
+    job_titles = job_titles_str.split(',')
 
     location = os.environ.get("LOCATION")
     if not location:
