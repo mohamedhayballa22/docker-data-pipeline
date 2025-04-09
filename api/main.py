@@ -19,11 +19,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/health")
 def health_check():
     client = get_docker_client()
     docker_status = "connected" if client else "error"
     return {"status": "healthy", "docker_client": docker_status}
+
 
 @app.get("/data", response_model=List[JobItem])
 def get_data(db: Session = Depends(get_db)):
@@ -32,7 +34,10 @@ def get_data(db: Session = Depends(get_db)):
         return jobs
     except Exception as e:
         logger.error(f"Database query error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve data from database.")
+        raise HTTPException(
+            status_code=500, detail="Failed to retrieve data from database."
+        )
+
 
 @app.post("/trigger-job-pipeline")
 async def trigger_job_pipeline(background_tasks: BackgroundTasks):
@@ -40,6 +45,7 @@ async def trigger_job_pipeline(background_tasks: BackgroundTasks):
     logger.info("Received request to trigger job pipeline.")
     background_tasks.add_task(run_job_pipeline_sdk)
     return {"message": "Job pipeline trigger request accepted."}
+
 
 def run_job_pipeline_sdk():
     """Runs scraper and loader scripts inside their containers using docker exec via SDK."""
@@ -64,17 +70,23 @@ def run_job_pipeline_sdk():
 
     try:
         # --- Run Scraper ---
-        logger.info(f"Triggering scraper script '{scraper_script_path}' in container: {scraper_container.name}...")
+        logger.info(
+            f"Triggering scraper script '{scraper_script_path}' in container: {scraper_container.name}..."
+        )
         # Use exec_run to execute the command inside the container
         scrape_exit_code, scrape_output = scraper_container.exec_run(
             cmd=f"python {scraper_script_path}",
             stream=False,
             demux=False,
-            tty=False # Important: Don't allocate pseudo-TTY
+            tty=False,  # Important: Don't allocate pseudo-TTY
         )
 
         # Decode output from bytes to string
-        output_str = scrape_output.decode('utf-8', errors='replace') if scrape_output else "(No output)"
+        output_str = (
+            scrape_output.decode("utf-8", errors="replace")
+            if scrape_output
+            else "(No output)"
+        )
         logger.info(f"--- Scraper Output (Exit Code: {scrape_exit_code}) ---")
         logger.info(output_str)
         logger.info("--- End Scraper Output ---")
@@ -86,15 +98,18 @@ def run_job_pipeline_sdk():
         logger.info("Scraper task completed successfully.")
 
         # --- Run Loader ---
-        logger.info(f"Triggering loader script '{loader_script_path}' in container: {loader_container.name}...")
+        logger.info(
+            f"Triggering loader script '{loader_script_path}' in container: {loader_container.name}..."
+        )
         load_exit_code, load_output = loader_container.exec_run(
-            cmd=f"python {loader_script_path}",
-            stream=False,
-            demux=False,
-            tty=False
+            cmd=f"python {loader_script_path}", stream=False, demux=False, tty=False
         )
 
-        output_str = load_output.decode('utf-8', errors='replace') if load_output else "(No output)"
+        output_str = (
+            load_output.decode("utf-8", errors="replace")
+            if load_output
+            else "(No output)"
+        )
         logger.info(f"--- Loader Output (Exit Code: {load_exit_code}) ---")
         logger.info(output_str)
         logger.info("--- End Loader Output ---")
