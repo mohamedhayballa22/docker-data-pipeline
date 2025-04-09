@@ -7,7 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from models import Job, JobSkill
 from logger.logger import get_logger
 
-logger = get_logger("api")
+logger = get_logger("loader")
 
 def parse_date(date_str):
     """Parse date string into a datetime.date object."""

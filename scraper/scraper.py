@@ -9,7 +9,7 @@ import sys
 from typing import List, Dict, Optional, Any
 from logger.logger import get_logger
 
-logger = get_logger("api")
+logger = get_logger("scraper")
 
 # --- Constants and Configuration ---
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
