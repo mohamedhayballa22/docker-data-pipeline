@@ -8,6 +8,7 @@ from sqlalchemy import (
     Text,
     MetaData,
     DateTime,
+    ForeignKey,
     func,
     create_engine,
 )
@@ -50,6 +51,17 @@ class Job(Base):
 
     # Relationship with skills
     skills = relationship("JobSkill", back_populates="job")
+
+class JobSkill(Base):
+    __tablename__ = 'job_skills'
+    __table_args__ = {'schema': 'core'}
+    
+    job_skill_id = Column(Integer, primary_key=True, autoincrement=True)
+    job_id = Column(Integer, ForeignKey('core.jobs.job_id'))
+    skill = Column(String(100))
+    
+    # Relationship with job
+    job = relationship("Job", back_populates="skills")
 
 
 # Pydantic models (for API responses)

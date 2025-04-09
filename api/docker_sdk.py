@@ -42,6 +42,7 @@ def get_container_sdk(service_name: str):
         containers = client.containers.list(
             filters={
                 "label": f"com.docker.compose.project={project_name}",
+                "label": f"com.docker.compose.service={service_name}",
                 "status": "running",
             }
         )
