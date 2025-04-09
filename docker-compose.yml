@@ -1,32 +1,90 @@
 version: '3'
 
 services:
-  scraper:
-    build: ./scraper
+  db:
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "5432:5432"
     volumes:
-      - ./data:/app/data
-    restart: "no"  # Run once and exit
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    networks:
+      - default
 
-  transformer:
-    build: ./transformer
+  scraper:
+    build:
+      context: .
+      dockerfile: ./scraper/Dockerfile
     volumes:
-      - ./data:/app/data
+      - pipeline_data:/app/data
+      - ./logs:/app/logs
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - JOB_TITLES=${JOB_TITLES}
+      - LOCATION=${LOCATION}
+      - TIME_FILTER=${TIME_FILTER}
+      - NUM_PAGES=${NUM_PAGES}
+      - MAX_JOBS=${MAX_JOBS}
+      - OUTPUT_DIR=/app/data
+      - OUTPUT_FILENAME=${OUTPUT_FILENAME}
+      - ENVIRONMENT=${ENVIRONMENT}
+    restart: unless-stopped
+    networks:
+      - default
+    
+  loader:
+    build:
+      context: .
+      dockerfile: ./loader/Dockerfile
+    volumes:
+      - pipeline_data:/app/data
+      - ./logs:/app/logs
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - ENVIRONMENT=${ENVIRONMENT}
     depends_on:
-      - scraper
-    restart: "no"  # Run once and exit
+      - db
+    restart: unless-stopped
+    networks:
+      - default
 
   api:
-    build: ./api
+    build:
+      context: .
+      dockerfile: ./api/Dockerfile
     volumes:
-      - ./data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/app
+      - ./logs:/app/logs
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
     depends_on:
-      - transformer
+      - db
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - COMPOSE_PROJECT_NAME=docker-data-pipeline
+      - ENVIRONMENT=${ENVIRONMENT}
+    networks:
+      - default
 
   web-ui:
     build: ./web-ui
     ports:
-      - "3000:80"
+      - "3000:3000"
     depends_on:
       - api
+    networks:
+      - default
+
+volumes:
+  postgres_data:
+  pipeline_data:
+
+networks:
+  default:

@@ -1,2 +1,6 @@
 .venv
 /data
+.env
+__pycache__
+*/node_modules
+/log

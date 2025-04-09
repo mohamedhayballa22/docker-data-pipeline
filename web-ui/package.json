@@ -1,9 +1,14 @@
 {
-    "name": "data-pipeline-ui",
-    "version": "1.0.0",
-    "description": "Simple UI for data pipeline demo",
-    "main": "src/app.js",
-    "scripts": {
-      "start": "http-server -p 3000"
-    }
-  }
+  "name": "job-board-web-ui",
+  "version": "1.0.0",
+  "description": "Web UI for job board data pipeline",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "serve -s .",
+    "dev": "serve -s . -l 3000"
+  },
+  "dependencies": {
+    "serve": "^14.2.1"
+  },
+  "devDependencies": {}
+}
