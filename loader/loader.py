@@ -34,9 +34,10 @@ def load_transformed_data(file_path):
 def process_job_listing(session, job_data):
     """Process a single job listing and add it to the database."""
     # Check if job already exists (based on URL)
-    existing_job = None
-    if job_data.get("url"):
-        existing_job = session.query(Job).filter_by(job_url=job_data["url"]).first()
+    existing_job = session.query(Job).filter_by(
+        title=job_data["title"],
+        company_name=job_data["company"]
+    ).first()
 
     if existing_job:
         logger.info(f"Job already exists: {job_data['title']} at {job_data['company']}")
