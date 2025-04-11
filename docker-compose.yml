@@ -137,6 +137,9 @@ services:
 volumes:
   postgres_data:
   pipeline_data:
+  zookeeper_data:
+  zookeeper_log:
+  kafka_data:
 
 networks:
   default:
