@@ -5,3 +5,4 @@ sqlalchemy==2.0.36
 psycopg2-binary==2.9.10
 docker==7.1.0
 kafka-python==2.1.5
+websockets==15.0.1
