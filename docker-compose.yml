@@ -91,14 +91,7 @@ services:
       - pipeline_data:/app/data
       - ./logs:/app/logs
     environment:
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - JOB_TITLES=${JOB_TITLES}
-      - LOCATION=${LOCATION}
-      - TIME_FILTER=${TIME_FILTER}
-      - NUM_PAGES=${NUM_PAGES}
-      - MAX_JOBS=${MAX_JOBS}
-      - OUTPUT_DIR=/app/data
-      - OUTPUT_FILENAME=${OUTPUT_FILENAME}
+      - KAFKA_BROKER_URL=kafka:9092
       - ENVIRONMENT=${ENVIRONMENT}
     restart: unless-stopped
     networks:
