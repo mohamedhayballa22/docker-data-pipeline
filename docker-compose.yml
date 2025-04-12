@@ -45,10 +45,11 @@ services:
         echo 'Waiting for Kafka to be ready...' &&
         cub kafka-ready -b kafka:9092 1 30 &&
         echo 'Creating Kafka topics...' &&
-        kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --partitions 3 --replication-factor 1 --topic scraping-jobs &&
-        kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --partitions 3 --replication-factor 1 --topic data-processing &&
-        kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --partitions 3 --replication-factor 1 --topic system-notifications &&
-        echo 'Kafka topics created.'
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --partitions 3 --replication-factor 1 --topic scraping-jobs && \
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --partitions 3 --replication-factor 1 --topic job-status-updates && \ # <-- ADDED LINE
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --partitions 3 --replication-factor 1 --topic data-processing && \
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --partitions 3 --replication-factor 1 --topic system-notifications && \
+        echo 'Kafka topics created/verified.'
       "
     networks:
       - default
