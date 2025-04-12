@@ -96,7 +96,7 @@ services:
     restart: unless-stopped
     networks:
       - default
-    
+
   loader:
     build:
       context: .
@@ -105,6 +105,7 @@ services:
       - pipeline_data:/app/data
       - ./logs:/app/logs
     environment:
+      - KAFKA_BROKER_URL=kafka:9092
       - DATABASE_URL=${DATABASE_URL}
       - ENVIRONMENT=${ENVIRONMENT}
     depends_on:
