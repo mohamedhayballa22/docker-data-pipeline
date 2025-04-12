@@ -126,9 +126,18 @@ services:
       - "8000:8000"
     depends_on:
       - db
+      - kafka
     environment:
+      - KAFKA_BROKER_URL=kafka:9092
       - DATABASE_URL=${DATABASE_URL}
-      - COMPOSE_PROJECT_NAME=docker-data-pipeline
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - JOB_TITLES=${JOB_TITLES}
+      - LOCATION=${LOCATION}
+      - TIME_FILTER=${TIME_FILTER}
+      - NUM_PAGES=${NUM_PAGES}
+      - MAX_JOBS=${MAX_JOBS}
+      - OUTPUT_DIR=/app/data
+      - OUTPUT_FILENAME=${OUTPUT_FILENAME}
       - ENVIRONMENT=${ENVIRONMENT}
     networks:
       - default
