@@ -134,7 +134,6 @@ services:
       - JOB_TITLES=${JOB_TITLES}
       - LOCATION=${LOCATION}
       - TIME_FILTER=${TIME_FILTER}
-      - NUM_PAGES=${NUM_PAGES}
       - MAX_JOBS=${MAX_JOBS}
       - OUTPUT_DIR=/app/data
       - OUTPUT_FILENAME=${OUTPUT_FILENAME}
