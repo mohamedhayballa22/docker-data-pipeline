@@ -367,7 +367,7 @@ def process_scraping_job(job_data: Dict[str, Any], producer):
     location = parameters.get("LOCATION")
     time_filter = parameters.get("TIME_FILTER")
     max_jobs_str = parameters.get("MAX_JOBS")
-    output_dir = parameters.get("OUTPUT_DIR", "/app/data")
+    output_dir = "/app/data"
 
     if not job_titles_str or not location or not max_jobs_str:
         error_msg = "Missing required parameters: JOB_TITLES, LOCATION, and MAX_JOBS are required."

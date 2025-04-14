@@ -117,8 +117,6 @@ async def trigger_job_pipeline():
         "LOCATION": os.getenv("LOCATION", "USA"),
         "TIME_FILTER": os.getenv("TIME_FILTER", "7d"),
         "MAX_JOBS": int(os.getenv("MAX_JOBS", "50")),
-        "OUTPUT_DIR": os.getenv("OUTPUT_DIR", "/app/data"),
-        "OUTPUT_FILENAME": os.getenv("OUTPUT_FILENAME", f"jobs.json")
     }
 
     # Construct Kafka Message
