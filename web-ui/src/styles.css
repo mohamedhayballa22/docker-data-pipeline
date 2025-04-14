@@ -27,3 +27,13 @@
 .job-url {
     font-size: 0.9rem;
 }
+
+#progressContainer {
+    margin-bottom: 1rem;
+}
+
+.progress-bar {
+    color: white;
+    text-align: center;
+    white-space: nowrap;
+}
