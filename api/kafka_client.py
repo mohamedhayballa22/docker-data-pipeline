@@ -145,42 +145,41 @@ def consume_kafka_messages(consumer_instance, stop_event, job_statuses, lock, lo
                 job_id = message.get("job_id")
                 event_type = message.get("event_type")
                 source = message.get("source", "unknown")
+                description = message.get("description")
                 event_timestamp = message.get("timestamp", time.time())
 
                 if not job_id:
                     logger.warning(f"Received message on topic {topic} without 'job_id': {message}")
                     continue
 
-                # Prepare data for updating job_statuses
                 update_data = {
                     'last_update': event_timestamp,
                     'event_timestamp': event_timestamp,
                     'last_event_type': event_type,
-                    'source': source
+                    'source': source,
+                    'description': description
                 }
                 status_changed = False
 
                 # Handle messages based on Topic
                 if topic == JOB_STATUS_UPDATES_TOPIC:
-                    if event_type == "job_started":
-                        update_data['status'] = "RUNNING"
-                        update_data['stage'] = source.upper()
-                        update_data['percentage'] = 0.0
-                        status_changed = True
-                    elif event_type == "job_progress":
+                    if event_type == "job_progress":
                         update_data['status'] = "RUNNING"
                         update_data['stage'] = source.upper()
                         update_data['percentage'] = message.get("percentage", update_data.get('percentage', 0.0))
+                        update_data['description'] = message.get("description")
                         status_changed = True
                     elif event_type == "loading_progress":
-                        update_data['status'] = "LOADING DATA"
-                        update_data['stage'] = "LOADING DATA"
+                        update_data['status'] = "LOADER"
+                        update_data['stage'] = "LOADER"
                         update_data['percentage'] = message.get("percentage", update_data.get('percentage', 0.0))
+                        update_data['description'] = message.get("description")
                         status_changed = True
                     elif event_type == "loading_complete":
                         update_data['status'] = "COMPLETE"
-                        update_data['stage'] = "LOADING DATA"
+                        update_data['stage'] = "LOADER"
                         update_data['percentage'] = 100.0
+                        update_data['description'] = message.get("description")
                         status_changed = True
                     else:
                         logger.warning(f"Received unhandled event_type '{event_type}' on topic {JOB_STATUS_UPDATES_TOPIC} for job {job_id}")
@@ -201,7 +200,6 @@ def consume_kafka_messages(consumer_instance, stop_event, job_statuses, lock, lo
                         if job_id not in job_statuses:
                             job_statuses[job_id] = {"job_id": job_id}
 
-                        # Merge new update data into the existing status
                         job_statuses[job_id].update(update_data)
                         updated_status_info = job_statuses[job_id].copy() # Get latest state for broadcast
 
@@ -212,6 +210,7 @@ def consume_kafka_messages(consumer_instance, stop_event, job_statuses, lock, lo
                             "status": updated_status_info.get("status"),
                             "stage": updated_status_info.get("stage"),
                             "percentage": updated_status_info.get("percentage"),
+                            "description": updated_status_info.get("description"),
                             "error_details": updated_status_info.get("error_details"),
                             "last_update": updated_status_info.get("last_update"),
                             "last_event_type": updated_status_info.get("last_event_type"),
@@ -244,7 +243,7 @@ def start_consumer_thread(job_statuses, lock, loop, broadcast_func):
             consumer = create_kafka_consumer(job_statuses, lock)
         except Exception as e:
              logger.error(f"Failed during Kafka Consumer creation: {e}. Cannot start consumer thread.")
-             return False # Prevent thread start if consumer creation fails
+             return False
 
         if consumer is None:
             logger.error("Cannot start consumer thread: Consumer initialization failed.")
