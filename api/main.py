@@ -2,11 +2,11 @@ import os
 import threading
 import time
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Depends, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Depends, WebSocket, WebSocketDisconnect, Path, Body
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
-from api.models import JobItem, get_db, Job, PipelineTriggerRequest
+from api.models import JobItem, get_db, Job, PipelineTriggerRequest, ProgressUpdate
 from logger.logger import get_logger
 from api.kafka_client import (
     create_kafka_producer,
@@ -175,6 +175,54 @@ def get_job_status(job_id: str):
     else:
         logger.warning(f"Status requested for unknown job ID: {job_id}")
         raise HTTPException(status_code=404, detail=f"Status for job ID '{job_id}' not found.")
+    
+@app.delete("/jobs/{job_id}", status_code=204)
+def delete_job(job_id: int = Path(...), 
+               db: Session = Depends(get_db)):
+    """
+    Deletes a job from the database by its ID.
+    """
+    logger.info(f"Request to delete job with ID: {job_id}")
+    
+    try:
+        job = db.query(Job).filter(Job.job_id == job_id).first()
+        if not job:
+            logger.warning(f"Delete request for non-existent job ID: {job_id}")
+            raise HTTPException(status_code=404, detail=f"Job with ID {job_id} not found")
+        
+        db.delete(job)
+        db.commit()
+        logger.info(f"Successfully deleted job with ID: {job_id}")
+        return None
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error deleting job with ID {job_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete job: {str(e)}")
+
+@app.patch("/jobs/{job_id}/progress")
+def update_job_progress(job_id: int = Path(...),
+                        update: ProgressUpdate = Body(...),
+                        db: Session = Depends(get_db)):
+    """
+    Updates the progress field of a job.
+    """
+    logger.info(f"Request to update progress for job ID {job_id} to: {update.progress}")
+    
+    try:
+        job = db.query(Job).filter(Job.job_id == job_id).first()
+        if not job:
+            logger.warning(f"Progress update request for non-existent job ID: {job_id}")
+            raise HTTPException(status_code=404, detail=f"Job with ID {job_id} not found")
+        
+        job.progress = update.progress
+        db.commit()
+        logger.info(f"Successfully updated progress for job ID {job_id} to '{update.progress}'")
+        
+        return {"job_id": job_id, "progress": update.progress}
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating progress for job ID {job_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update job progress: {str(e)}")
     
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
