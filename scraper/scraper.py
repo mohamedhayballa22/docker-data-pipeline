@@ -21,11 +21,13 @@ KAFKA_PROCESSING_TOPIC = "data-processing"
 KAFKA_NOTIFICATIONS_TOPIC = "system-notifications"
 KAFKA_CONSUMER_GROUP_ID = "scraper-group"
 
+
 def get_time_filter_param(filter_type: Optional[str]) -> str:
     if not filter_type:
         return ""
     filters = {"24h": "f_TPR=r86400", "1w": "f_TPR=r604800", "1m": "f_TPR=r2592000"}
     return filters.get(filter_type.lower(), "")
+
 
 def get_job_description(job_url: str) -> Optional[str]:
     if not job_url or not job_url.startswith("http"):
@@ -73,9 +75,13 @@ def get_job_description(job_url: str) -> Optional[str]:
         return None
 
 
-def extract_skills_with_llm(description_text: Optional[str], model: Optional[genai.GenerativeModel]) -> List[str]:
+def extract_skills_with_llm(
+    description_text: Optional[str], model: Optional[genai.GenerativeModel]
+) -> List[str]:
     if not model or not description_text:
-        logger.info("LLM model not available or no description text, skipping skill extraction.")
+        logger.info(
+            "LLM model not available or no description text, skipping skill extraction."
+        )
         return []
 
     prompt = f"""
@@ -99,17 +105,29 @@ def extract_skills_with_llm(description_text: Optional[str], model: Optional[gen
     try:
         generation_config = genai.GenerationConfig(temperature=0.2)
         safety_settings = [
-            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
-            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
-            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
-            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+            {
+                "category": "HARM_CATEGORY_HARASSMENT",
+                "threshold": "BLOCK_MEDIUM_AND_ABOVE",
+            },
+            {
+                "category": "HARM_CATEGORY_HATE_SPEECH",
+                "threshold": "BLOCK_MEDIUM_AND_ABOVE",
+            },
+            {
+                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                "threshold": "BLOCK_MEDIUM_AND_ABOVE",
+            },
+            {
+                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                "threshold": "BLOCK_MEDIUM_AND_ABOVE",
+            },
         ]
 
         response = model.generate_content(
             prompt,
             generation_config=generation_config,
             safety_settings=safety_settings,
-            request_options={'timeout': 60}
+            request_options={"timeout": 60},
         )
 
         response_text = response.text.strip()
@@ -127,11 +145,18 @@ def extract_skills_with_llm(description_text: Optional[str], model: Optional[gen
             try:
                 skills_list = json.loads(json_string)
                 if isinstance(skills_list, list):
-                    cleaned_skills = sorted(list(set([
-                        str(skill).strip()
-                        for skill in skills_list
-                        if str(skill).strip() and len(str(skill).strip()) > 1
-                    ])))
+                    cleaned_skills = sorted(
+                        list(
+                            set(
+                                [
+                                    str(skill).strip()
+                                    for skill in skills_list
+                                    if str(skill).strip()
+                                    and len(str(skill).strip()) > 1
+                                ]
+                            )
+                        )
+                    )
                     logger.info(f"Extracted {len(cleaned_skills)} unique skills.")
                     return cleaned_skills
                 else:
@@ -152,16 +177,19 @@ def extract_skills_with_llm(description_text: Optional[str], model: Optional[gen
         logger.error(f"Exception during LLM API call or processing: {e}")
         return []
 
+
 def make_absolute_url(base_url: str, relative_url: Optional[str]) -> Optional[str]:
     if not relative_url:
         return None
-    if '?' in relative_url:
-        relative_url = relative_url.split('?')[0]
+    if "?" in relative_url:
+        relative_url = relative_url.split("?")[0]
     if relative_url.startswith("http"):
         return relative_url
     if relative_url.startswith("/"):
         return urljoin(base_url, relative_url)
-    logger.warning(f"Could not make relative URL absolute (or might be malformed): {relative_url} with base {base_url}")
+    logger.warning(
+        f"Could not make relative URL absolute (or might be malformed): {relative_url} with base {base_url}"
+    )
     return urljoin(base_url, relative_url)
 
 
@@ -172,7 +200,7 @@ def scrape_linkedin_jobs(
     time_filter: Optional[str],
     max_jobs: int,
     llm_model: Optional[genai.GenerativeModel],
-    progress_callback: Callable[[float, str], None]
+    progress_callback: Callable[[float, str], None],
 ) -> List[Dict[str, Any]]:
     """
     Scrapes LinkedIn jobs until max_jobs is reached or no more results found,
@@ -184,7 +212,9 @@ def scrape_linkedin_jobs(
     jobs_scraped_count = 0
     total_jobs_to_scrape = max_jobs
 
-    logger.info(f"[Job {job_id}] Starting scrape for {len(job_titles)} titles, location='{location}', max_jobs={max_jobs}")
+    logger.info(
+        f"[Job {job_id}] Starting scrape for {len(job_titles)} titles, location='{location}', max_jobs={max_jobs}"
+    )
     progress_callback(5.0, "Initializing job search...")
 
     search_interrupted = False
@@ -206,7 +236,9 @@ def scrape_linkedin_jobs(
         page_number = 0
         while True:
             if jobs_scraped_count >= total_jobs_to_scrape:
-                logger.info(f"[Job {job_id}] Reached max_jobs limit ({total_jobs_to_scrape}). Stopping search.")
+                logger.info(
+                    f"[Job {job_id}] Reached max_jobs limit ({total_jobs_to_scrape}). Stopping search."
+                )
                 search_interrupted = True
                 break
 
@@ -215,7 +247,9 @@ def scrape_linkedin_jobs(
             if time_param:
                 search_url += f"&{time_param}"
 
-            logger.info(f"[Job {job_id}] Requesting search results page {page_number + 1} (start={start}): {search_url}")
+            logger.info(
+                f"[Job {job_id}] Requesting search results page {page_number + 1} (start={start}): {search_url}"
+            )
             try:
                 response = requests.get(search_url, headers=HEADERS, timeout=30)
                 response.raise_for_status()
@@ -234,7 +268,9 @@ def scrape_linkedin_jobs(
 
                 for card_index, card in enumerate(job_cards):
                     if jobs_scraped_count >= total_jobs_to_scrape:
-                        logger.info(f"[Job {job_id}] Reached max_jobs limit during card processing.")
+                        logger.info(
+                            f"[Job {job_id}] Reached max_jobs limit during card processing."
+                        )
                         search_interrupted = True
                         break
 
@@ -250,79 +286,123 @@ def scrape_linkedin_jobs(
                     }
 
                     title_element = card.find("h3", class_="base-search-card__title")
-                    job_data["title"] = title_element.text.strip() if title_element else "N/A"
+                    job_data["title"] = (
+                        title_element.text.strip() if title_element else "N/A"
+                    )
 
-                    company_element = card.find("h4", class_="base-search-card__subtitle")
-                    job_data["company"] = company_element.text.strip() if company_element else "N/A"
+                    company_element = card.find(
+                        "h4", class_="base-search-card__subtitle"
+                    )
+                    job_data["company"] = (
+                        company_element.text.strip() if company_element else "N/A"
+                    )
 
-                    location_element = card.find("span", class_="job-search-card__location")
-                    job_data["location"] = location_element.text.strip() if location_element else None
+                    location_element = card.find(
+                        "span", class_="job-search-card__location"
+                    )
+                    job_data["location"] = (
+                        location_element.text.strip() if location_element else None
+                    )
 
                     link_element = card.find("a", class_="base-card__full-link")
                     if not link_element:
-                         link_element = card.find("a", href=True)
+                        link_element = card.find("a", href=True)
                     relative_url = link_element.get("href") if link_element else None
                     job_data["url"] = make_absolute_url(base_search_url, relative_url)
 
                     date_element = card.find("time", class_="job-search-card__listdate")
                     if date_element:
-                        job_data["date_posted"] = date_element.get("datetime") or date_element.text.strip()
+                        job_data["date_posted"] = (
+                            date_element.get("datetime") or date_element.text.strip()
+                        )
                     else:
                         date_element_alt = card.find("time")
                         if date_element_alt:
-                            job_data["date_posted"] = date_element_alt.get("datetime") or date_element_alt.text.strip()
+                            job_data["date_posted"] = (
+                                date_element_alt.get("datetime")
+                                or date_element_alt.text.strip()
+                            )
 
-                    if job_data.get("title") != "N/A" and job_data.get("company") != "N/A" and job_data.get("url"):
+                    if (
+                        job_data.get("title") != "N/A"
+                        and job_data.get("company") != "N/A"
+                        and job_data.get("url")
+                    ):
                         if job_data["url"]:
                             description_text = get_job_description(job_data["url"])
                             job_data["description"] = description_text
                             if description_text and llm_model:
-                                job_data["extracted_skills"] = extract_skills_with_llm(description_text, llm_model)
+                                job_data["extracted_skills"] = extract_skills_with_llm(
+                                    description_text, llm_model
+                                )
                             elif not description_text:
-                                logger.info(f"[Job {job_id}] Could not retrieve description for job: {job_data['title']} at {job_data['company']}")
+                                logger.info(
+                                    f"[Job {job_id}] Could not retrieve description for job: {job_data['title']} at {job_data['company']}"
+                                )
                         else:
-                            logger.info(f"[Job {job_id}] Skipping description/skills fetch due to missing/invalid URL for job: {job_data['title']} at {job_data['company']}")
+                            logger.info(
+                                f"[Job {job_id}] Skipping description/skills fetch due to missing/invalid URL for job: {job_data['title']} at {job_data['company']}"
+                            )
 
                         all_jobs_data.append(job_data)
                         jobs_scraped_count += 1
 
-                        percentage = 5.0 + min(75.0, (jobs_scraped_count / total_jobs_to_scrape) * 75.0)
+                        percentage = 5.0 + min(
+                            75.0, (jobs_scraped_count / total_jobs_to_scrape) * 75.0
+                        )
                         percentage = round(percentage, 2)
 
                         progress_message = f"Scraped job {jobs_scraped_count}/{total_jobs_to_scrape}: {job_data['title']}"
-                        logger.info(f"[Job {job_id}] {progress_message} ({percentage}%)")
+                        logger.info(
+                            f"[Job {job_id}] {progress_message} ({percentage}%)"
+                        )
                         progress_callback(percentage, progress_message)
 
                     else:
-                        logger.warning(f"[Job {job_id}] Skipping card - missing essential info (Title='{job_data['title']}', Company='{job_data['company']}', URL='{job_data['url']}').")
+                        logger.warning(
+                            f"[Job {job_id}] Skipping card - missing essential info (Title='{job_data['title']}', Company='{job_data['company']}', URL='{job_data['url']}')."
+                        )
 
                 if search_interrupted:
                     break
 
-                logger.info(f"[Job {job_id}] Finished processing page {page_number + 1} for '{job_title_query}'.")
+                logger.info(
+                    f"[Job {job_id}] Finished processing page {page_number + 1} for '{job_title_query}'."
+                )
 
                 page_number += 1
 
                 sleep_time = random.uniform(3.0, 7.0)
-                logger.info(f"[Job {job_id}] Sleeping for {sleep_time:.1f} seconds before next page...")
+                logger.info(
+                    f"[Job {job_id}] Sleeping for {sleep_time:.1f} seconds before next page..."
+                )
                 time.sleep(sleep_time)
 
             except requests.exceptions.Timeout:
-                logger.error(f"[Job {job_id}] Timeout requesting search page {page_number + 1} for '{job_title_query}'. Stopping search for this query.")
+                logger.error(
+                    f"[Job {job_id}] Timeout requesting search page {page_number + 1} for '{job_title_query}'. Stopping search for this query."
+                )
                 break
             except requests.exceptions.RequestException as e:
-                logger.error(f"[Job {job_id}] HTTP error scraping search page {page_number + 1} for '{job_title_query}': {e}. Stopping search for this query.")
+                logger.error(
+                    f"[Job {job_id}] HTTP error scraping search page {page_number + 1} for '{job_title_query}': {e}. Stopping search for this query."
+                )
                 break
             except Exception as e:
-                logger.error(f"[Job {job_id}] An unexpected error occurred on search page {page_number + 1} for '{job_title_query}': {e}", exc_info=True)
+                logger.error(
+                    f"[Job {job_id}] An unexpected error occurred on search page {page_number + 1} for '{job_title_query}': {e}",
+                    exc_info=True,
+                )
                 break
         if search_interrupted:
-              break
+            break
 
-    logger.info(f"[Job {job_id}] Scraping finished. Total jobs collected: {len(all_jobs_data)} (Target was {max_jobs})")
-    progress_callback(80.0, f"Finished data scraping. Collected {len(all_jobs_data)} jobs.")
+    logger.info(
+        f"[Job {job_id}] Scraping finished. Total jobs collected: {len(all_jobs_data)} (Target was {max_jobs})"
+    )
 
     return all_jobs_data
+
 
 def save_to_json(data: List[Dict[str, Any]], filepath: str, job_id: str):
     try:
@@ -334,31 +414,45 @@ def save_to_json(data: List[Dict[str, Any]], filepath: str, job_id: str):
         logger.error(f"[Job {job_id}] Could not write to file {filepath}: {e}")
         raise
     except Exception as e:
-        logger.error(f"[Job {job_id}] An unexpected error occurred during JSON saving: {e}")
+        logger.error(
+            f"[Job {job_id}] An unexpected error occurred during JSON saving: {e}"
+        )
         raise
+
 
 def process_scraping_job(job_data: Dict[str, Any], producer):
     job_id = job_data.get("job_id")
     parameters = job_data.get("parameters", {})
 
     if not job_id or not parameters:
-        logger.error(f"Received invalid job data (missing job_id or parameters): {job_data}")
+        logger.error(
+            f"Received invalid job data (missing job_id or parameters): {job_data}"
+        )
         return
 
     logger.info(f"[Job {job_id}] Received job request. Parameters: {parameters}")
 
     def kafka_progress_reporter(percentage: float, description: str):
-        logger.debug(f"[Job {job_id}] Progress update: {percentage:.2f}% - {description}")
+        logger.debug(
+            f"[Job {job_id}] Progress update: {percentage:.2f}% - {description}"
+        )
         try:
-            send_kafka_message(producer, KAFKA_STATUS_TOPIC, {
-                "job_id": job_id,
-                "event_type": "job_progress",
-                "source": "scraper",
-                "percentage": round(percentage, 2),
-                "description": description
-            }, job_id)
+            send_kafka_message(
+                producer,
+                KAFKA_STATUS_TOPIC,
+                {
+                    "job_id": job_id,
+                    "event_type": "job_progress",
+                    "source": "scraper",
+                    "percentage": round(percentage, 2),
+                    "description": description,
+                },
+                job_id,
+            )
         except Exception as kafka_err:
-            logger.error(f"[Job {job_id}] Failed to send progress update to Kafka: {kafka_err}")
+            logger.error(
+                f"[Job {job_id}] Failed to send progress update to Kafka: {kafka_err}"
+            )
 
     kafka_progress_reporter(0.0, "Initializing...")
 
@@ -372,17 +466,28 @@ def process_scraping_job(job_data: Dict[str, Any], producer):
     if not job_titles_str or not location or not max_jobs_str:
         error_msg = "Missing required parameters: job_titles, location, and max_jobs are required."
         logger.error(f"[Job {job_id}] {error_msg}")
-        send_kafka_message(producer, KAFKA_NOTIFICATIONS_TOPIC, {
-            "job_id": job_id, "event_type": "job_failed", "source": "scraper",
-            "error_details": error_msg
-        }, job_id)
+        send_kafka_message(
+            producer,
+            KAFKA_NOTIFICATIONS_TOPIC,
+            {
+                "job_id": job_id,
+                "event_type": "job_failed",
+                "source": "scraper",
+                "error_details": error_msg,
+            },
+            job_id,
+        )
         kafka_progress_reporter(0.0, f"Failed: {error_msg}")
         return
 
     try:
-        job_titles = [title.strip() for title in job_titles_str.split(',') if title.strip()]
+        job_titles = [
+            title.strip() for title in job_titles_str.split(",") if title.strip()
+        ]
         if not job_titles:
-             raise ValueError("job_titles cannot be empty after splitting and stripping.")
+            raise ValueError(
+                "job_titles cannot be empty after splitting and stripping."
+            )
         max_jobs = int(max_jobs_str)
         if max_jobs <= 0:
             raise ValueError("max_jobs must be a positive integer.")
@@ -391,10 +496,17 @@ def process_scraping_job(job_data: Dict[str, Any], producer):
     except ValueError as e:
         error_msg = f"Invalid parameter format (max_jobs must be a positive integer, job_titles cannot be empty): {e}"
         logger.error(f"[Job {job_id}] {error_msg}")
-        send_kafka_message(producer, KAFKA_NOTIFICATIONS_TOPIC, {
-            "job_id": job_id, "event_type": "job_failed", "source": "scraper",
-            "error_details": error_msg
-        }, job_id)
+        send_kafka_message(
+            producer,
+            KAFKA_NOTIFICATIONS_TOPIC,
+            {
+                "job_id": job_id,
+                "event_type": "job_failed",
+                "source": "scraper",
+                "error_details": error_msg,
+            },
+            job_id,
+        )
         kafka_progress_reporter(0.0, f"Failed: {error_msg}")
         return
 
@@ -406,10 +518,14 @@ def process_scraping_job(job_data: Dict[str, Any], producer):
             llm_model = genai.GenerativeModel("models/gemini-1.5-flash")
             logger.info(f"[Job {job_id}] Google AI Model configured successfully.")
         except Exception as e:
-            logger.warning(f"[Job {job_id}] Failed to configure Google AI: {e}. Skill extraction will be disabled.")
+            logger.warning(
+                f"[Job {job_id}] Failed to configure Google AI: {e}. Skill extraction will be disabled."
+            )
             llm_model = None
     else:
-        logger.info(f"[Job {job_id}] GOOGLE_API_KEY not provided. LLM skill extraction disabled.")
+        logger.info(
+            f"[Job {job_id}] GOOGLE_API_KEY not provided. LLM skill extraction disabled."
+        )
 
     try:
         logger.info(f"[Job {job_id}] Starting scrape process...")
@@ -422,7 +538,7 @@ def process_scraping_job(job_data: Dict[str, Any], producer):
             time_filter=time_filter,
             max_jobs=max_jobs,
             llm_model=llm_model,
-            progress_callback=kafka_progress_reporter
+            progress_callback=kafka_progress_reporter,
         )
 
         logger.info(f"[Job {job_id}] Scraping process completed. Saving results...")
@@ -430,28 +546,42 @@ def process_scraping_job(job_data: Dict[str, Any], producer):
 
         save_to_json(scraped_data, output_path, job_id)
 
-        logger.info(f"[Job {job_id}] Scraper job phase completed. Sending loading request to data processing.")
+        logger.info(
+            f"[Job {job_id}] Scraper job phase completed. Sending loading request to data processing."
+        )
         kafka_progress_reporter(88.0, "Requesting data processing...")
 
-        send_kafka_message(producer, KAFKA_PROCESSING_TOPIC, {
-            "job_id": job_id,
-            "event_type": "loading_requested",
-            "source": "scraper",
-            "data_path": output_path
-        }, job_id)
+        send_kafka_message(
+            producer,
+            KAFKA_PROCESSING_TOPIC,
+            {
+                "job_id": job_id,
+                "event_type": "loading_requested",
+                "source": "scraper",
+                "data_path": output_path,
+            },
+            job_id,
+        )
 
-        kafka_progress_reporter(90, "Scraping and processing request completed successfully.")
+        kafka_progress_reporter(
+            90, "Scraping and processing request completed successfully."
+        )
         logger.info(f"[Job {job_id}] Successfully completed.")
 
     except Exception as e:
         error_msg = f"Scraping job failed during execution: {type(e).__name__} - {e}"
         logger.exception(f"[Job {job_id}] {error_msg}")
-        send_kafka_message(producer, KAFKA_NOTIFICATIONS_TOPIC, {
-            "job_id": job_id,
-            "event_type": "job_failed",
-            "source": "scraper",
-            "error_details": error_msg
-        }, job_id)
+        send_kafka_message(
+            producer,
+            KAFKA_NOTIFICATIONS_TOPIC,
+            {
+                "job_id": job_id,
+                "event_type": "job_failed",
+                "source": "scraper",
+                "error_details": error_msg,
+            },
+            job_id,
+        )
         kafka_progress_reporter(0.0, f"Failed: {error_msg}")
 
 
@@ -465,34 +595,54 @@ def main_consumer_loop():
             logger.critical("Failed to initialize Kafka Producer. Exiting.")
             sys.exit(1)
 
-        logger.info(f"Initializing Kafka Consumer for topic '{KAFKA_SCRAPING_TOPIC}' with group '{KAFKA_CONSUMER_GROUP_ID}'...")
+        logger.info(
+            f"Initializing Kafka Consumer for topic '{KAFKA_SCRAPING_TOPIC}' with group '{KAFKA_CONSUMER_GROUP_ID}'..."
+        )
         consumer = get_kafka_consumer(KAFKA_SCRAPING_TOPIC, KAFKA_CONSUMER_GROUP_ID)
         if not consumer:
             logger.critical("Failed to initialize Kafka Consumer. Exiting.")
             sys.exit(1)
 
-        logger.info("Scraper service started. Waiting for job requests on Kafka topic...")
+        logger.info(
+            "Scraper service started. Waiting for job requests on Kafka topic..."
+        )
 
         for message in consumer:
             try:
-                logger.debug(f"Received message: Topic='{message.topic}', Partition={message.partition}, Offset={message.offset}, Key='{message.key}'")
+                logger.debug(
+                    f"Received message: Topic='{message.topic}', Partition={message.partition}, Offset={message.offset}, Key='{message.key}'"
+                )
                 job_data = message.value
 
-                if isinstance(job_data, dict) and job_data.get("event_type") == "job_requested":
-                     logger.info(f"Processing job request with ID: {job_data.get('job_id', 'N/A')}")
-                     process_scraping_job(job_data, producer)
+                if (
+                    isinstance(job_data, dict)
+                    and job_data.get("event_type") == "job_requested"
+                ):
+                    logger.info(
+                        f"Processing job request with ID: {job_data.get('job_id', 'N/A')}"
+                    )
+                    process_scraping_job(job_data, producer)
                 else:
-                    log_data_snippet = str(job_data)[:200] + ('...' if len(str(job_data)) > 200 else '')
-                    logger.warning(f"Skipping unexpected message on {KAFKA_SCRAPING_TOPIC}: Type={type(job_data)}, EventType={job_data.get('event_type', 'N/A') if isinstance(job_data, dict) else 'N/A'}, Data='{log_data_snippet}'")
+                    log_data_snippet = str(job_data)[:200] + (
+                        "..." if len(str(job_data)) > 200 else ""
+                    )
+                    logger.warning(
+                        f"Skipping unexpected message on {KAFKA_SCRAPING_TOPIC}: Type={type(job_data)}, EventType={job_data.get('event_type', 'N/A') if isinstance(job_data, dict) else 'N/A'}, Data='{log_data_snippet}'"
+                    )
 
             except Exception as e:
                 job_id_in_error = "unknown"
                 if isinstance(message.value, dict):
                     job_id_in_error = message.value.get("job_id", "unknown")
-                logger.error(f"Error processing Kafka message (Job ID: {job_id_in_error}) from {KAFKA_SCRAPING_TOPIC}: {e}", exc_info=True)
+                logger.error(
+                    f"Error processing Kafka message (Job ID: {job_id_in_error}) from {KAFKA_SCRAPING_TOPIC}: {e}",
+                    exc_info=True,
+                )
 
     except KeyboardInterrupt:
-        logger.info("Consumer loop interrupted by user (KeyboardInterrupt). Shutting down.")
+        logger.info(
+            "Consumer loop interrupted by user (KeyboardInterrupt). Shutting down."
+        )
     except Exception as e:
         logger.critical(f"Critical error in Kafka consumer loop: {e}", exc_info=True)
     finally:
@@ -509,7 +659,7 @@ def main_consumer_loop():
                 producer.close(timeout=10)
                 logger.info("Kafka Producer flushed and closed.")
             except Exception as pe:
-                 logger.error(f"Error flushing/closing Kafka producer: {pe}")
+                logger.error(f"Error flushing/closing Kafka producer: {pe}")
         logger.info("Shutdown complete.")
 
 

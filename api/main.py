@@ -2,7 +2,15 @@ import os
 import threading
 import time
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Depends, WebSocket, WebSocketDisconnect, Path, Body
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    Depends,
+    WebSocket,
+    WebSocketDisconnect,
+    Path,
+    Body,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
@@ -17,7 +25,7 @@ from api.kafka_client import (
     close_kafka_consumer,
     generate_job_id,
     SCRAPING_JOBS_TOPIC,
-    KAFKA_BROKER_URL
+    KAFKA_BROKER_URL,
 )
 from kafka.errors import KafkaError
 import asyncio
@@ -33,6 +41,7 @@ job_status_lock = threading.Lock()
 # WebSocket Connection Manager
 manager = ConnectionManager()
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup:
@@ -41,7 +50,6 @@ async def lifespan(app: FastAPI):
     manager.set_loop(loop)
 
     producer_ready = False
-    consumer_ready = False
 
     try:
         # Initialize Producer
@@ -50,20 +58,25 @@ async def lifespan(app: FastAPI):
         logger.info("Kafka Producer connection established.")
 
         # Start Consumer Thread
-        if start_consumer_thread(job_statuses, job_status_lock, loop, manager.broadcast):
-            consumer_ready = True
+        if start_consumer_thread(
+            job_statuses, job_status_lock, loop, manager.broadcast
+        ):
             logger.info("Kafka Consumer thread started successfully.")
         else:
-             logger.error("Failed to start Kafka consumer thread.")
+            logger.error("Failed to start Kafka consumer thread.")
 
     except KafkaError as e:
         logger.error(f"Kafka connection failed during startup: {e}")
-        if producer_ready: close_kafka_producer()
-        raise RuntimeError(f"Failed to establish essential Kafka connection: {e}") from e
+        if producer_ready:
+            close_kafka_producer()
+        raise RuntimeError(
+            f"Failed to establish essential Kafka connection: {e}"
+        ) from e
     except Exception as e:
-         logger.error(f"Unexpected error during API startup: {e}")
-         if producer_ready: close_kafka_producer()
-         raise
+        logger.error(f"Unexpected error during API startup: {e}")
+        if producer_ready:
+            close_kafka_producer()
+        raise
 
     yield
 
@@ -73,6 +86,7 @@ async def lifespan(app: FastAPI):
     close_kafka_consumer()
     close_kafka_producer()
     logger.info("Kafka resources closed. API shutdown complete.")
+
 
 app = FastAPI(title="Data Pipeline API", lifespan=lifespan)
 
@@ -85,10 +99,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/health")
 def health_check():
     kafka_status = "connected" if create_kafka_producer() is not None else "error"
-    return {"status": "healthy", "kafka_connection": kafka_status, "kafka_broker": KAFKA_BROKER_URL}
+    return {
+        "status": "healthy",
+        "kafka_connection": kafka_status,
+        "kafka_broker": KAFKA_BROKER_URL,
+    }
+
 
 @app.get("/data", response_model=List[JobItem])
 def get_data(db: Session = Depends(get_db)):
@@ -101,20 +121,23 @@ def get_data(db: Session = Depends(get_db)):
             status_code=500, detail="Failed to retrieve data from database."
         )
 
+
 @app.post("/trigger-job-pipeline", status_code=202)
 async def trigger_job_pipeline(payload: PipelineTriggerRequest):
     """
     Accepts job parameters, generates a job ID, adds the API key,
     and sends a 'job requested' event to Kafka.
     """
-    logger.info(f"Received request to trigger job pipeline with payload: {payload.model_dump()}")
+    logger.info(
+        f"Received request to trigger job pipeline with payload: {payload.model_dump()}"
+    )
 
     google_api_key = os.getenv("GOOGLE_API_KEY")
     if not google_api_key:
         logger.error("CRITICAL: GOOGLE_API_KEY environment variable is not set.")
         raise HTTPException(
             status_code=500,
-            detail="Server configuration error: Missing Google API Key."
+            detail="Server configuration error: Missing Google API Key.",
         )
 
     job_id = generate_job_id()
@@ -134,33 +157,49 @@ async def trigger_job_pipeline(payload: PipelineTriggerRequest):
         "job_id": job_id,
         "event_type": "job_requested",
         "timestamp": time.time(),
-        "parameters": scraping_params
+        "parameters": scraping_params,
     }
 
     # Send to Kafka
     try:
         success = send_kafka_message(SCRAPING_JOBS_TOPIC, message)
         if not success:
-             logger.error(f"Failed to publish job request for {job_id} to Kafka topic '{SCRAPING_JOBS_TOPIC}'. send_kafka_message returned False.")
-             raise HTTPException(status_code=503, detail="Failed to publish job request to Kafka.")
+            logger.error(
+                f"Failed to publish job request for {job_id} to Kafka topic '{SCRAPING_JOBS_TOPIC}'. send_kafka_message returned False."
+            )
+            raise HTTPException(
+                status_code=503, detail="Failed to publish job request to Kafka."
+            )
     except KafkaError as e:
-        logger.error(f"Kafka error during job trigger for {job_id} on topic '{SCRAPING_JOBS_TOPIC}': {e}")
-        raise HTTPException(status_code=503, detail="Service unavailable: Could not connect or publish to Kafka.")
+        logger.error(
+            f"Kafka error during job trigger for {job_id} on topic '{SCRAPING_JOBS_TOPIC}': {e}"
+        )
+        raise HTTPException(
+            status_code=503,
+            detail="Service unavailable: Could not connect or publish to Kafka.",
+        )
     except Exception as e:
-        logger.error(f"Unexpected error during job trigger for {job_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal server error during job trigger.")
+        logger.error(
+            f"Unexpected error during job trigger for {job_id}: {e}", exc_info=True
+        )
+        raise HTTPException(
+            status_code=500, detail="Internal server error during job trigger."
+        )
 
     with job_status_lock:
         job_statuses[job_id] = {
             "status": "requested",
             "requested_at": message["timestamp"],
             "last_update": message["timestamp"],
-            "details": "Job request sent to Kafka."
+            "details": "Job request sent to Kafka.",
         }
         logger.debug(f"Initialized status for job {job_id}: {job_statuses[job_id]}")
 
-    logger.info(f"Job {job_id} successfully requested via Kafka topic '{SCRAPING_JOBS_TOPIC}'.")
+    logger.info(
+        f"Job {job_id} successfully requested via Kafka topic '{SCRAPING_JOBS_TOPIC}'."
+    )
     return {"message": "Job pipeline trigger request accepted.", "job_id": job_id}
+
 
 @app.get("/jobs/{job_id}/status")
 def get_job_status(job_id: str):
@@ -174,22 +213,26 @@ def get_job_status(job_id: str):
         return status_info
     else:
         logger.warning(f"Status requested for unknown job ID: {job_id}")
-        raise HTTPException(status_code=404, detail=f"Status for job ID '{job_id}' not found.")
-    
+        raise HTTPException(
+            status_code=404, detail=f"Status for job ID '{job_id}' not found."
+        )
+
+
 @app.delete("/jobs/{job_id}", status_code=204)
-def delete_job(job_id: int = Path(...), 
-               db: Session = Depends(get_db)):
+def delete_job(job_id: int = Path(...), db: Session = Depends(get_db)):
     """
     Deletes a job from the database by its ID.
     """
     logger.info(f"Request to delete job with ID: {job_id}")
-    
+
     try:
         job = db.query(Job).filter(Job.job_id == job_id).first()
         if not job:
             logger.warning(f"Delete request for non-existent job ID: {job_id}")
-            raise HTTPException(status_code=404, detail=f"Job with ID {job_id} not found")
-        
+            raise HTTPException(
+                status_code=404, detail=f"Job with ID {job_id} not found"
+            )
+
         db.delete(job)
         db.commit()
         logger.info(f"Successfully deleted job with ID: {job_id}")
@@ -199,31 +242,41 @@ def delete_job(job_id: int = Path(...),
         logger.error(f"Error deleting job with ID {job_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to delete job: {str(e)}")
 
+
 @app.patch("/jobs/{job_id}/progress")
-def update_job_progress(job_id: int = Path(...),
-                        update: ProgressUpdate = Body(...),
-                        db: Session = Depends(get_db)):
+def update_job_progress(
+    job_id: int = Path(...),
+    update: ProgressUpdate = Body(...),
+    db: Session = Depends(get_db),
+):
     """
     Updates the progress field of a job.
     """
     logger.info(f"Request to update progress for job ID {job_id} to: {update.progress}")
-    
+
     try:
         job = db.query(Job).filter(Job.job_id == job_id).first()
         if not job:
             logger.warning(f"Progress update request for non-existent job ID: {job_id}")
-            raise HTTPException(status_code=404, detail=f"Job with ID {job_id} not found")
-        
+            raise HTTPException(
+                status_code=404, detail=f"Job with ID {job_id} not found"
+            )
+
         job.progress = update.progress
         db.commit()
-        logger.info(f"Successfully updated progress for job ID {job_id} to '{update.progress}'")
-        
+        logger.info(
+            f"Successfully updated progress for job ID {job_id} to '{update.progress}'"
+        )
+
         return {"job_id": job_id, "progress": update.progress}
     except Exception as e:
         db.rollback()
         logger.error(f"Error updating progress for job ID {job_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to update job progress: {str(e)}")
-    
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update job progress: {str(e)}"
+        )
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
@@ -245,6 +298,6 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.error(f"Error in WebSocket connection {client_info}: {e}")
         manager.disconnect(websocket)
         try:
-             await websocket.close(code=1011)
+            await websocket.close(code=1011)
         except Exception:
-             pass
+            pass

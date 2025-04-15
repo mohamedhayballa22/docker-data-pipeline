@@ -41,8 +41,8 @@ def create_kafka_producer():
             try:
                 producer = KafkaProducer(
                     bootstrap_servers=KAFKA_BROKER_URL,
-                    value_serializer=lambda v: json.dumps(v).encode('utf-8'),
-                    acks='all',
+                    value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+                    acks="all",
                     retries=MAX_RETRIES,
                     request_timeout_ms=REQUEST_TIMEOUT_MS,
                     retry_backoff_ms=RETRY_BACKOFF_MS,
@@ -55,13 +55,18 @@ def create_kafka_producer():
                     f"Kafka brokers not available at {KAFKA_BROKER_URL}. Retrying in 5 seconds... ({retries} retries left)"
                 )
                 if retries == 0:
-                    logger.error("Failed to connect Kafka Producer after multiple retries.")
+                    logger.error(
+                        "Failed to connect Kafka Producer after multiple retries."
+                    )
                     raise
                 time.sleep(5)
             except KafkaError as e:
-                 logger.error(f"An unexpected Kafka error occurred during producer connection: {e}")
-                 raise
+                logger.error(
+                    f"An unexpected Kafka error occurred during producer connection: {e}"
+                )
+                raise
     return producer
+
 
 def send_kafka_message(topic, message):
     """Sends a message to the specified Kafka topic."""
@@ -72,25 +77,33 @@ def send_kafka_message(topic, message):
     try:
         logger.debug(f"Sending message to topic '{topic}': {message}")
         future = producer.send(topic, value=message)
-        record_metadata = future.get(timeout=REQUEST_TIMEOUT_MS / 1000) # Convert ms to s
-        logger.info(f"Message sent successfully to topic '{topic}', partition {record_metadata.partition}, offset {record_metadata.offset}")
+        record_metadata = future.get(
+            timeout=REQUEST_TIMEOUT_MS / 1000
+        )  # Convert ms to s
+        logger.info(
+            f"Message sent successfully to topic '{topic}', partition {record_metadata.partition}, offset {record_metadata.offset}"
+        )
         return True
     except KafkaError as e:
         logger.error(f"Failed to send message to Kafka topic '{topic}': {e}")
         return False
     except Exception as e:
-        logger.error(f"An unexpected error occurred while sending message to Kafka: {e}")
+        logger.error(
+            f"An unexpected error occurred while sending message to Kafka: {e}"
+        )
         return False
+
 
 def close_kafka_producer():
     """Closes the Kafka producer."""
     global producer
     if producer:
         logger.info("Closing Kafka Producer...")
-        producer.flush(timeout=5) # Allow time to flush
+        producer.flush(timeout=5)  # Allow time to flush
         producer.close(timeout=5)
         producer = None
         logger.info("Kafka Producer closed.")
+
 
 # Consumer Functions
 def create_kafka_consumer(job_statuses, lock):
@@ -105,12 +118,14 @@ def create_kafka_consumer(job_statuses, lock):
                     *CONSUMER_TOPICS,
                     bootstrap_servers=KAFKA_BROKER_URL,
                     group_id=API_CONSUMER_GROUP_ID,
-                    value_deserializer=lambda v: json.loads(v.decode('utf-8')),
-                    auto_offset_reset='earliest',
+                    value_deserializer=lambda v: json.loads(v.decode("utf-8")),
+                    auto_offset_reset="earliest",
                     enable_auto_commit=True,
                     auto_commit_interval_ms=5000,
                 )
-                logger.info(f"Kafka Consumer connected and subscribed to topics: {CONSUMER_TOPICS} with group_id: {API_CONSUMER_GROUP_ID}")
+                logger.info(
+                    f"Kafka Consumer connected and subscribed to topics: {CONSUMER_TOPICS} with group_id: {API_CONSUMER_GROUP_ID}"
+                )
                 return consumer
             except NoBrokersAvailable:
                 retries -= 1
@@ -118,24 +133,33 @@ def create_kafka_consumer(job_statuses, lock):
                     f"Kafka brokers not available at {KAFKA_BROKER_URL}. Retrying in 5 seconds... ({retries} retries left)"
                 )
                 if retries == 0:
-                    logger.error("Failed to connect Kafka Consumer after multiple retries.")
+                    logger.error(
+                        "Failed to connect Kafka Consumer after multiple retries."
+                    )
                     raise
                 time.sleep(5)
             except KafkaError as e:
-                 logger.error(f"An unexpected Kafka error occurred during consumer connection: {e}")
-                 raise
+                logger.error(
+                    f"An unexpected Kafka error occurred during consumer connection: {e}"
+                )
+                raise
     return consumer
 
-def consume_kafka_messages(consumer_instance, stop_event, job_statuses, lock, loop, broadcast_func):
+
+def consume_kafka_messages(
+    consumer_instance, stop_event, job_statuses, lock, loop, broadcast_func
+):
     """Continuously consumes messages from status and notification topics
-       and triggers broadcast for relevant updates."""
-    logger.info("Kafka consumer thread started. Listening for status updates and notifications.")
+    and triggers broadcast for relevant updates."""
+    logger.info(
+        "Kafka consumer thread started. Listening for status updates and notifications."
+    )
     try:
         # Loop indefinitely using the consumer as an iterator (blocks until messages arrive)
         for record in consumer_instance:
             if stop_event.is_set():
-                 logger.info("Stop event detected, exiting consumer loop.")
-                 break
+                logger.info("Stop event detected, exiting consumer loop.")
+                break
 
             topic = record.topic
             try:
@@ -149,49 +173,61 @@ def consume_kafka_messages(consumer_instance, stop_event, job_statuses, lock, lo
                 event_timestamp = message.get("timestamp", time.time())
 
                 if not job_id:
-                    logger.warning(f"Received message on topic {topic} without 'job_id': {message}")
+                    logger.warning(
+                        f"Received message on topic {topic} without 'job_id': {message}"
+                    )
                     continue
 
                 update_data = {
-                    'last_update': event_timestamp,
-                    'event_timestamp': event_timestamp,
-                    'last_event_type': event_type,
-                    'source': source,
-                    'description': description
+                    "last_update": event_timestamp,
+                    "event_timestamp": event_timestamp,
+                    "last_event_type": event_type,
+                    "source": source,
+                    "description": description,
                 }
                 status_changed = False
 
                 # Handle messages based on Topic
                 if topic == JOB_STATUS_UPDATES_TOPIC:
                     if event_type == "job_progress":
-                        update_data['status'] = "RUNNING"
-                        update_data['stage'] = source.upper()
-                        update_data['percentage'] = message.get("percentage", update_data.get('percentage', 0.0))
-                        update_data['description'] = message.get("description")
+                        update_data["status"] = "RUNNING"
+                        update_data["stage"] = source.upper()
+                        update_data["percentage"] = message.get(
+                            "percentage", update_data.get("percentage", 0.0)
+                        )
+                        update_data["description"] = message.get("description")
                         status_changed = True
                     elif event_type == "loading_progress":
-                        update_data['status'] = "LOADER"
-                        update_data['stage'] = "LOADER"
-                        update_data['percentage'] = message.get("percentage", update_data.get('percentage', 0.0))
-                        update_data['description'] = message.get("description")
+                        update_data["status"] = "LOADER"
+                        update_data["stage"] = "LOADER"
+                        update_data["percentage"] = message.get(
+                            "percentage", update_data.get("percentage", 0.0)
+                        )
+                        update_data["description"] = message.get("description")
                         status_changed = True
                     elif event_type == "loading_complete":
-                        update_data['status'] = "COMPLETE"
-                        update_data['stage'] = "LOADER"
-                        update_data['percentage'] = 100.0
-                        update_data['description'] = message.get("description")
+                        update_data["status"] = "COMPLETE"
+                        update_data["stage"] = "LOADER"
+                        update_data["percentage"] = 100.0
+                        update_data["description"] = message.get("description")
                         status_changed = True
                     else:
-                        logger.warning(f"Received unhandled event_type '{event_type}' on topic {JOB_STATUS_UPDATES_TOPIC} for job {job_id}")
+                        logger.warning(
+                            f"Received unhandled event_type '{event_type}' on topic {JOB_STATUS_UPDATES_TOPIC} for job {job_id}"
+                        )
 
                 elif topic == SYSTEM_NOTIFICATIONS_TOPIC:
                     if event_type == "job_failed":
-                        update_data['status'] = "FAILED"
-                        update_data['stage'] = source.upper()
-                        update_data['error_details'] = message.get("error_details", "No details provided.")
+                        update_data["status"] = "FAILED"
+                        update_data["stage"] = source.upper()
+                        update_data["error_details"] = message.get(
+                            "error_details", "No details provided."
+                        )
                         status_changed = True
                     else:
-                         logger.warning(f"Received unhandled event_type '{event_type}' on topic {SYSTEM_NOTIFICATIONS_TOPIC} for job {job_id}")
+                        logger.warning(
+                            f"Received unhandled event_type '{event_type}' on topic {SYSTEM_NOTIFICATIONS_TOPIC} for job {job_id}"
+                        )
 
                 # Update Job Status and Broadcast if Changed
                 if status_changed:
@@ -201,9 +237,13 @@ def consume_kafka_messages(consumer_instance, stop_event, job_statuses, lock, lo
                             job_statuses[job_id] = {"job_id": job_id}
 
                         job_statuses[job_id].update(update_data)
-                        updated_status_info = job_statuses[job_id].copy() # Get latest state for broadcast
+                        updated_status_info = job_statuses[
+                            job_id
+                        ].copy()  # Get latest state for broadcast
 
-                        logger.debug(f"Updated status for job {job_id}: {updated_status_info}")
+                        logger.debug(
+                            f"Updated status for job {job_id}: {updated_status_info}"
+                        )
 
                     if updated_status_info and loop and broadcast_func:
                         broadcast_payload = {
@@ -213,27 +253,41 @@ def consume_kafka_messages(consumer_instance, stop_event, job_statuses, lock, lo
                             "description": updated_status_info.get("description"),
                             "error_details": updated_status_info.get("error_details"),
                             "last_update": updated_status_info.get("last_update"),
-                            "last_event_type": updated_status_info.get("last_event_type"),
+                            "last_event_type": updated_status_info.get(
+                                "last_event_type"
+                            ),
                         }
-                        broadcast_payload = {k: v for k, v in broadcast_payload.items() if v is not None}
+                        broadcast_payload = {
+                            k: v for k, v in broadcast_payload.items() if v is not None
+                        }
 
                         ws_message = {
                             "type": "status_update",
                             "job_id": job_id,
-                            "data": broadcast_payload
+                            "data": broadcast_payload,
                         }
-                        asyncio.run_coroutine_threadsafe(broadcast_func(ws_message), loop)
-                        logger.debug(f"Scheduled broadcast for job {job_id} update: {ws_message}")
+                        asyncio.run_coroutine_threadsafe(
+                            broadcast_func(ws_message), loop
+                        )
+                        logger.debug(
+                            f"Scheduled broadcast for job {job_id} update: {ws_message}"
+                        )
 
             except json.JSONDecodeError as e:
-                logger.error(f"Failed to decode Kafka message: {e}. Raw record value: {record.value}")
+                logger.error(
+                    f"Failed to decode Kafka message: {e}. Raw record value: {record.value}"
+                )
             except Exception as e:
-                logger.error(f"Error processing message from Kafka topic '{topic}': {e}", exc_info=True)
+                logger.error(
+                    f"Error processing message from Kafka topic '{topic}': {e}",
+                    exc_info=True,
+                )
 
     except Exception as e:
         logger.error(f"Critical error in Kafka consumer loop: {e}", exc_info=True)
     finally:
         logger.info("Kafka consumer thread finished.")
+
 
 def start_consumer_thread(job_statuses, lock, loop, broadcast_func):
     """Starts the Kafka consumer in a background thread."""
@@ -242,19 +296,30 @@ def start_consumer_thread(job_statuses, lock, loop, broadcast_func):
         try:
             consumer = create_kafka_consumer(job_statuses, lock)
         except Exception as e:
-             logger.error(f"Failed during Kafka Consumer creation: {e}. Cannot start consumer thread.")
-             return False
+            logger.error(
+                f"Failed during Kafka Consumer creation: {e}. Cannot start consumer thread."
+            )
+            return False
 
         if consumer is None:
-            logger.error("Cannot start consumer thread: Consumer initialization failed.")
+            logger.error(
+                "Cannot start consumer thread: Consumer initialization failed."
+            )
             return False
 
     if consumer_thread is None or not consumer_thread.is_alive():
         stop_consumer_event.clear()
         consumer_thread = threading.Thread(
             target=consume_kafka_messages,
-            args=(consumer, stop_consumer_event, job_statuses, lock, loop, broadcast_func),
-            daemon=True
+            args=(
+                consumer,
+                stop_consumer_event,
+                job_statuses,
+                lock,
+                loop,
+                broadcast_func,
+            ),
+            daemon=True,
         )
         consumer_thread.start()
         logger.info("Kafka consumer background thread initiated.")
@@ -262,6 +327,7 @@ def start_consumer_thread(job_statuses, lock, loop, broadcast_func):
     else:
         logger.warning("Consumer thread already running.")
         return True
+
 
 def stop_consumer_thread():
     """Signals the consumer thread to stop, closes the consumer, and waits for the thread."""
@@ -271,7 +337,9 @@ def stop_consumer_thread():
         stop_consumer_event.set()
         consumer_thread.join(timeout=10)
         if consumer_thread.is_alive():
-            logger.warning("Kafka consumer thread did not stop gracefully within timeout.")
+            logger.warning(
+                "Kafka consumer thread did not stop gracefully within timeout."
+            )
         else:
             logger.info("Kafka consumer thread stopped.")
         consumer_thread = None
@@ -290,7 +358,7 @@ def close_kafka_consumer():
             consumer.close()
             logger.info("Kafka Consumer closed.")
         except Exception as e:
-             logger.error(f"Error closing Kafka consumer: {e}")
+            logger.error(f"Error closing Kafka consumer: {e}")
         finally:
             consumer = None
 

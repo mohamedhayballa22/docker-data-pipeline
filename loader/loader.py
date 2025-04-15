@@ -14,7 +14,7 @@ from kafka_client import (
     DATA_PROCESSING_TOPIC,
     JOB_STATUS_UPDATES_TOPIC,
     SYSTEM_NOTIFICATIONS_TOPIC,
-    LOADER_CONSUMER_GROUP_ID
+    LOADER_CONSUMER_GROUP_ID,
 )
 
 logger = get_logger("loader")
@@ -22,15 +22,16 @@ logger = get_logger("loader")
 DATA_DIR = "/app/data"
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
+
 def parse_date(date_str):
     """Parse date string into a datetime.date object."""
     if not date_str:
         return None
     try:
-        if ' ' in date_str:
-            date_str = date_str.split(' ')[0]
-        if 'T' in date_str:
-             date_str = date_str.split('T')[0]
+        if " " in date_str:
+            date_str = date_str.split(" ")[0]
+        if "T" in date_str:
+            date_str = date_str.split("T")[0]
         return datetime.strptime(date_str, "%Y-%m-%d").date()
     except (ValueError, TypeError):
         logger.warning(f"Could not parse date: '{date_str}', setting to None.")
@@ -41,10 +42,12 @@ def load_transformed_data(file_path: str, job_id: str):
     """Load the transformed data from the JSON file."""
     logger.info(f"[Job {job_id}] Attempting to load data from {file_path}")
     try:
-        with open(file_path, "r", encoding='utf-8') as file:
+        with open(file_path, "r", encoding="utf-8") as file:
             data = json.load(file)
         if isinstance(data, list):
-            logger.info(f"[Job {job_id}] Successfully loaded {len(data)} records from {file_path}")
+            logger.info(
+                f"[Job {job_id}] Successfully loaded {len(data)} records from {file_path}"
+            )
             return data
         else:
             logger.error(f"[Job {job_id}] Data in {file_path} is not a list.")
@@ -56,7 +59,9 @@ def load_transformed_data(file_path: str, job_id: str):
         logger.error(f"[Job {job_id}] Error decoding JSON from {file_path}: {e}")
         return None
     except Exception as e:
-        logger.error(f"[Job {job_id}] Failed to load transformed data from {file_path}: {e}")
+        logger.error(
+            f"[Job {job_id}] Failed to load transformed data from {file_path}: {e}"
+        )
         return None
 
 
@@ -77,8 +82,8 @@ def process_job_listing(session, job_data: dict, existing_job_keys: set):
         return None
 
     if not job_data.get("location"):
-         logger.warning(f"Skipping job due to missing location: {title} at {company}")
-         return None
+        logger.warning(f"Skipping job due to missing location: {title} at {company}")
+        return None
 
     new_job = Job(
         title=title.strip(),
@@ -97,15 +102,18 @@ def process_job_listing(session, job_data: dict, existing_job_keys: set):
             if skill and isinstance(skill, str) and skill.strip():
                 stripped_skill = skill.strip()
                 if stripped_skill not in unique_skills:
-                     new_job.skills.append(JobSkill(skill=stripped_skill))
-                     unique_skills.add(stripped_skill)
+                    new_job.skills.append(JobSkill(skill=stripped_skill))
+                    unique_skills.add(stripped_skill)
     else:
         logger.warning(f"Skills data for job '{title}' is not a list: {skills}")
 
     existing_job_keys.add(job_key)
 
-    logger.debug(f"Prepared new job for addition: {new_job.title} at {new_job.company_name}")
+    logger.debug(
+        f"Prepared new job for addition: {new_job.title} at {new_job.company_name}"
+    )
     return new_job
+
 
 # Kafka Message Handling
 def send_status_update(producer, topic: str, job_id: str, event_type: str, **kwargs):
@@ -114,14 +122,16 @@ def send_status_update(producer, topic: str, job_id: str, event_type: str, **kwa
         "job_id": job_id,
         "event_type": event_type,
         "source": "loader",
-        "timestamp": time.time()
+        "timestamp": time.time(),
     }
     if "percentage" in kwargs:
         message["percentage"] = round(float(kwargs["percentage"]), 2)
     if "description" in kwargs:
         message["description"] = str(kwargs["description"])
 
-    message.update({k: v for k, v in kwargs.items() if k not in ["percentage", "description"]})
+    message.update(
+        {k: v for k, v in kwargs.items() if k not in ["percentage", "description"]}
+    )
 
     logger.debug(f"Sending Kafka message to {topic}: {message}")
     send_message(producer, topic, message)
@@ -139,34 +149,69 @@ def process_loading_request(producer, job_id: str):
     if job_listings is None:
         error_msg = f"Failed to load or find data file: {file_path}"
         logger.error(f"[Job {job_id}] {error_msg}")
-        send_status_update(producer, SYSTEM_NOTIFICATIONS_TOPIC, job_id, "job_failed",
-                           error_details=error_msg)
-        send_status_update(producer, JOB_STATUS_UPDATES_TOPIC, job_id, "job_progress",
-                           percentage=current_percentage, description=f"Failed: {error_msg}")
+        send_status_update(
+            producer,
+            SYSTEM_NOTIFICATIONS_TOPIC,
+            job_id,
+            "job_failed",
+            error_details=error_msg,
+        )
+        send_status_update(
+            producer,
+            JOB_STATUS_UPDATES_TOPIC,
+            job_id,
+            "job_progress",
+            percentage=current_percentage,
+            description=f"Failed: {error_msg}",
+        )
         return
 
     total_jobs_in_file = len(job_listings)
     if total_jobs_in_file == 0:
-        logger.warning(f"[Job {job_id}] No job listings found in file {file_path}. Marking as complete.")
-        send_status_update(producer, JOB_STATUS_UPDATES_TOPIC, job_id, "loading_complete", # Use loading_complete
-                           percentage=100.0, description="Successfully loaded 0 new jobs (empty file).")
+        logger.warning(
+            f"[Job {job_id}] No job listings found in file {file_path}. Marking as complete."
+        )
+        send_status_update(
+            producer,
+            JOB_STATUS_UPDATES_TOPIC,
+            job_id,
+            "loading_complete",  # Use loading_complete
+            percentage=100.0,
+            description="Successfully loaded 0 new jobs (empty file).",
+        )
         try:
             os.remove(file_path)
             logger.info(f"[Job {job_id}] Deleted empty processed file: {file_path}")
         except OSError as e:
             logger.error(f"[Job {job_id}] Error deleting empty file {file_path}: {e}")
-            send_status_update(producer, SYSTEM_NOTIFICATIONS_TOPIC, job_id, "system_warning",
-                               details=f"Failed to delete empty file: {file_path}. Error: {e}")
+            send_status_update(
+                producer,
+                SYSTEM_NOTIFICATIONS_TOPIC,
+                job_id,
+                "system_warning",
+                details=f"Failed to delete empty file: {file_path}. Error: {e}",
+            )
         return
 
     # Database Connection
     if not DATABASE_URL:
         error_msg = "DATABASE_URL not configured in loader service"
         logger.error(f"[Job {job_id}] {error_msg}")
-        send_status_update(producer, SYSTEM_NOTIFICATIONS_TOPIC, job_id, "job_failed",
-                           error_details=error_msg)
-        send_status_update(producer, JOB_STATUS_UPDATES_TOPIC, job_id, "job_progress",
-                           percentage=current_percentage, description=f"Failed: {error_msg}")
+        send_status_update(
+            producer,
+            SYSTEM_NOTIFICATIONS_TOPIC,
+            job_id,
+            "job_failed",
+            error_details=error_msg,
+        )
+        send_status_update(
+            producer,
+            JOB_STATUS_UPDATES_TOPIC,
+            job_id,
+            "job_progress",
+            percentage=current_percentage,
+            description=f"Failed: {error_msg}",
+        )
         return
 
     engine = None
@@ -174,28 +219,53 @@ def process_loading_request(producer, job_id: str):
     try:
         logger.info(f"[Job {job_id}] Connecting to database...")
         engine = create_engine(DATABASE_URL)
-        with engine.connect() as connection:
-             logger.info(f"[Job {job_id}] Database connection successful.")
+        with engine.connect():
+            logger.info(f"[Job {job_id}] Database connection successful.")
         Session = sessionmaker(bind=engine)
         session = Session()
     except sqlalchemy_exc.SQLAlchemyError as e:
         error_msg = f"Database connection/initialization error: {e}"
         logger.error(f"[Job {job_id}] {error_msg}", exc_info=True)
-        send_status_update(producer, SYSTEM_NOTIFICATIONS_TOPIC, job_id, "job_failed",
-                           error_details=error_msg)
-        send_status_update(producer, JOB_STATUS_UPDATES_TOPIC, job_id, "job_progress",
-                           percentage=current_percentage, description=f"Failed: {error_msg}")
-        if engine: engine.dispose()
+        send_status_update(
+            producer,
+            SYSTEM_NOTIFICATIONS_TOPIC,
+            job_id,
+            "job_failed",
+            error_details=error_msg,
+        )
+        send_status_update(
+            producer,
+            JOB_STATUS_UPDATES_TOPIC,
+            job_id,
+            "job_progress",
+            percentage=current_percentage,
+            description=f"Failed: {error_msg}",
+        )
+        if engine:
+            engine.dispose()
         return
     except Exception as e:
         error_msg = f"Unexpected error during DB setup: {e}"
         logger.error(f"[Job {job_id}] {error_msg}", exc_info=True)
-        send_status_update(producer, SYSTEM_NOTIFICATIONS_TOPIC, job_id, "job_failed",
-                           error_details=error_msg)
-        send_status_update(producer, JOB_STATUS_UPDATES_TOPIC, job_id, "job_progress",
-                           percentage=current_percentage, description=f"Failed: {error_msg}")
-        if session: session.close()
-        if engine: engine.dispose()
+        send_status_update(
+            producer,
+            SYSTEM_NOTIFICATIONS_TOPIC,
+            job_id,
+            "job_failed",
+            error_details=error_msg,
+        )
+        send_status_update(
+            producer,
+            JOB_STATUS_UPDATES_TOPIC,
+            job_id,
+            "job_progress",
+            percentage=current_percentage,
+            description=f"Failed: {error_msg}",
+        )
+        if session:
+            session.close()
+        if engine:
+            engine.dispose()
         return
 
     # Processing Loop
@@ -205,17 +275,30 @@ def process_loading_request(producer, job_id: str):
     objects_to_add = []
 
     try:
-        logger.info(f"[Job {job_id}] Fetching existing job identifiers from database...")
+        logger.info(
+            f"[Job {job_id}] Fetching existing job identifiers from database..."
+        )
         existing_jobs_query = session.query(Job.title, Job.company_name).distinct()
-        existing_job_keys = set((title.strip().lower(), company.strip().lower()) for title, company in existing_jobs_query)
-        logger.info(f"[Job {job_id}] Found {len(existing_job_keys)} existing unique job identifiers.")
+        existing_job_keys = set(
+            (title.strip().lower(), company.strip().lower())
+            for title, company in existing_jobs_query
+        )
+        logger.info(
+            f"[Job {job_id}] Found {len(existing_job_keys)} existing unique job identifiers."
+        )
 
         # Update via kafka
         current_percentage = 91.0
         prep_message = f"Preparing to load {total_jobs_in_file} potential jobs into the database..."
         logger.info(f"[Job {job_id}] {prep_message}")
-        send_status_update(producer, JOB_STATUS_UPDATES_TOPIC, job_id, "job_progress",
-                           percentage=current_percentage, description=prep_message)
+        send_status_update(
+            producer,
+            JOB_STATUS_UPDATES_TOPIC,
+            job_id,
+            "job_progress",
+            percentage=current_percentage,
+            description=prep_message,
+        )
 
         for index, job_data in enumerate(job_listings):
             processed_count += 1
@@ -229,7 +312,9 @@ def process_loading_request(producer, job_id: str):
 
         # Add all new objects in bulk
         if objects_to_add:
-            logger.info(f"[Job {job_id}] Adding {len(objects_to_add)} new job objects to session...")
+            logger.info(
+                f"[Job {job_id}] Adding {len(objects_to_add)} new job objects to session..."
+            )
             session.add_all(objects_to_add)
         else:
             logger.info(f"[Job {job_id}] No new job objects to add to session.")
@@ -241,28 +326,53 @@ def process_loading_request(producer, job_id: str):
         else:
             commit_message = f"Preparing to commit {new_jobs_count} new jobs..."
         logger.info(f"[Job {job_id}] {commit_message}")
-        send_status_update(producer, JOB_STATUS_UPDATES_TOPIC, job_id, "job_progress",
-                           percentage=current_percentage, description=commit_message)
+        send_status_update(
+            producer,
+            JOB_STATUS_UPDATES_TOPIC,
+            job_id,
+            "job_progress",
+            percentage=current_percentage,
+            description=commit_message,
+        )
 
         logger.info(f"[Job {job_id}] Committing transaction...")
         session.commit()
-        logger.info(f"[Job {job_id}] Successfully committed {new_jobs_count} new jobs (processed {processed_count} from file).")
+        logger.info(
+            f"[Job {job_id}] Successfully committed {new_jobs_count} new jobs (processed {processed_count} from file)."
+        )
 
         # Update via kafka
         current_percentage = 100.0
-        final_message = f"Successfully loaded {new_jobs_count} new jobs into the database."
-        send_status_update(producer, JOB_STATUS_UPDATES_TOPIC, job_id, "loading_complete", # Use loading_complete
-                           percentage=current_percentage, description=final_message)
+        final_message = (
+            f"Successfully loaded {new_jobs_count} new jobs into the database."
+        )
+        send_status_update(
+            producer,
+            JOB_STATUS_UPDATES_TOPIC,
+            job_id,
+            "loading_complete",  # Use loading_complete
+            percentage=current_percentage,
+            description=final_message,
+        )
 
         # Cleanup
         try:
-            logger.info(f"[Job {job_id}] Attempting to delete processed file: {file_path}")
+            logger.info(
+                f"[Job {job_id}] Attempting to delete processed file: {file_path}"
+            )
             os.remove(file_path)
             logger.info(f"[Job {job_id}] Deleted processed file: {file_path}")
         except OSError as e:
-            logger.error(f"[Job {job_id}] Error deleting processed file {file_path}: {e}")
-            send_status_update(producer, SYSTEM_NOTIFICATIONS_TOPIC, job_id, "system_warning",
-                               details=f"Failed to delete processed file: {file_path}. Error: {e}")
+            logger.error(
+                f"[Job {job_id}] Error deleting processed file {file_path}: {e}"
+            )
+            send_status_update(
+                producer,
+                SYSTEM_NOTIFICATIONS_TOPIC,
+                job_id,
+                "system_warning",
+                details=f"Failed to delete processed file: {file_path}. Error: {e}",
+            )
 
     except Exception as e:
         error_msg = f"Error during data loading/commit: {type(e).__name__} - {e}"
@@ -270,10 +380,21 @@ def process_loading_request(producer, job_id: str):
         if session:
             logger.warning(f"[Job {job_id}] Rolling back transaction due to error.")
             session.rollback()
-        send_status_update(producer, SYSTEM_NOTIFICATIONS_TOPIC, job_id, "job_failed",
-                           error_details=error_msg)
-        send_status_update(producer, JOB_STATUS_UPDATES_TOPIC, job_id, "job_progress",
-                           percentage=current_percentage, description=f"Failed: {error_msg}")
+        send_status_update(
+            producer,
+            SYSTEM_NOTIFICATIONS_TOPIC,
+            job_id,
+            "job_failed",
+            error_details=error_msg,
+        )
+        send_status_update(
+            producer,
+            JOB_STATUS_UPDATES_TOPIC,
+            job_id,
+            "job_progress",
+            percentage=current_percentage,
+            description=f"Failed: {error_msg}",
+        )
     finally:
         if session:
             session.close()
@@ -281,6 +402,7 @@ def process_loading_request(producer, job_id: str):
         if engine:
             engine.dispose()
             logger.debug(f"[Job {job_id}] Database engine disposed.")
+
 
 # Main Consumer Loop
 def main_consumer_loop():
@@ -290,50 +412,85 @@ def main_consumer_loop():
     consumer = None
     try:
         producer = create_kafka_producer()
-        consumer = create_kafka_consumer(DATA_PROCESSING_TOPIC, LOADER_CONSUMER_GROUP_ID)
+        consumer = create_kafka_consumer(
+            DATA_PROCESSING_TOPIC, LOADER_CONSUMER_GROUP_ID
+        )
 
         if not producer or not consumer:
             logger.critical("Failed to initialize Kafka producer or consumer. Exiting.")
             sys.exit(1)
 
-        logger.info(f"Loader service ready. Listening for messages on topic '{DATA_PROCESSING_TOPIC}'...")
+        logger.info(
+            f"Loader service ready. Listening for messages on topic '{DATA_PROCESSING_TOPIC}'..."
+        )
         for message in consumer:
             msg_data = message.value
             job_id = "unknown"
 
             try:
                 if not isinstance(msg_data, dict):
-                     logger.error(f"Received non-dictionary message: {type(msg_data)} - {str(msg_data)[:200]}...")
-                     continue
+                    logger.error(
+                        f"Received non-dictionary message: {type(msg_data)} - {str(msg_data)[:200]}..."
+                    )
+                    continue
 
                 job_id = msg_data.get("job_id", "unknown")
                 event_type = msg_data.get("event_type")
                 source = msg_data.get("source")
 
-                logger.info(f"[Job {job_id}] Received message: Event='{event_type}', Source='{source}', Offset={message.offset}")
+                logger.info(
+                    f"[Job {job_id}] Received message: Event='{event_type}', Source='{source}', Offset={message.offset}"
+                )
 
-                if event_type == "loading_requested" and job_id != "unknown" and source == "scraper":
-                    logger.info(f"[Job {job_id}] Received valid '{event_type}' from '{source}'. Triggering processing...")
+                if (
+                    event_type == "loading_requested"
+                    and job_id != "unknown"
+                    and source == "scraper"
+                ):
+                    logger.info(
+                        f"[Job {job_id}] Received valid '{event_type}' from '{source}'. Triggering processing..."
+                    )
                     process_loading_request(producer, job_id)
                 elif event_type == "loading_requested":
-                     logger.warning(f"[Job {job_id}] Received '{event_type}' but source ('{source}') is not 'scraper' or job_id is missing. Skipping.")
+                    logger.warning(
+                        f"[Job {job_id}] Received '{event_type}' but source ('{source}') is not 'scraper' or job_id is missing. Skipping."
+                    )
                 else:
-                    logger.warning(f"[Job {job_id}] Received unexpected event_type '{event_type}'. Skipping.")
+                    logger.warning(
+                        f"[Job {job_id}] Received unexpected event_type '{event_type}'. Skipping."
+                    )
 
             except Exception as e:
-                logger.error(f"[Job {job_id}] Unhandled error processing Kafka message (Offset: {message.offset}): {e}", exc_info=True)
+                logger.error(
+                    f"[Job {job_id}] Unhandled error processing Kafka message (Offset: {message.offset}): {e}",
+                    exc_info=True,
+                )
                 if producer and job_id != "unknown":
                     try:
-                        send_status_update(producer, SYSTEM_NOTIFICATIONS_TOPIC, job_id, "job_failed",
-                                           error_details=f"Internal loader error processing message: {e}")
-                        send_status_update(producer, JOB_STATUS_UPDATES_TOPIC, job_id, "job_progress",
-                                           percentage=90.0,
-                                           description=f"Failed: Internal loader error")
+                        send_status_update(
+                            producer,
+                            SYSTEM_NOTIFICATIONS_TOPIC,
+                            job_id,
+                            "job_failed",
+                            error_details=f"Internal loader error processing message: {e}",
+                        )
+                        send_status_update(
+                            producer,
+                            JOB_STATUS_UPDATES_TOPIC,
+                            job_id,
+                            "job_progress",
+                            percentage=90.0,
+                            description="Failed: Internal loader error",
+                        )
                     except Exception as send_e:
-                         logger.error(f"[Job {job_id}] Failed to send error notification for internal error: {send_e}")
+                        logger.error(
+                            f"[Job {job_id}] Failed to send error notification for internal error: {send_e}"
+                        )
 
     except KeyboardInterrupt:
-        logger.info("Consumer loop interrupted by user (KeyboardInterrupt). Shutting down...")
+        logger.info(
+            "Consumer loop interrupted by user (KeyboardInterrupt). Shutting down..."
+        )
     except Exception as e:
         logger.critical(f"Critical error in main consumer loop: {e}", exc_info=True)
     finally:
@@ -350,6 +507,7 @@ def main_consumer_loop():
             except Exception as e:
                 logger.error(f"Error closing Kafka producer: {e}")
         logger.info("Loader service stopped.")
+
 
 if __name__ == "__main__":
     if not DATABASE_URL:

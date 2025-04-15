@@ -12,6 +12,7 @@ KAFKA_BROKER_URL = os.environ.get("KAFKA_BROKER_URL", "kafka:9092")
 MAX_CONNECTION_RETRIES = 5
 RETRY_DELAY_SECONDS = 5
 
+
 def get_kafka_producer() -> Optional[KafkaProducer]:
     """
     Creates and returns a KafkaProducer instance.
@@ -22,8 +23,8 @@ def get_kafka_producer() -> Optional[KafkaProducer]:
         try:
             producer = KafkaProducer(
                 bootstrap_servers=KAFKA_BROKER_URL,
-                value_serializer=lambda v: json.dumps(v).encode('utf-8'),
-                acks='all',
+                value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+                acks="all",
                 retries=3,
             )
             logger.info(f"Kafka Producer connected successfully to {KAFKA_BROKER_URL}")
@@ -41,6 +42,7 @@ def get_kafka_producer() -> Optional[KafkaProducer]:
             logger.error(f"An unexpected error occurred creating Kafka producer: {e}")
             return None
 
+
 def get_kafka_consumer(topic: str, group_id: str) -> Optional[KafkaConsumer]:
     """
     Creates and returns a KafkaConsumer instance subscribed to a topic.
@@ -53,11 +55,13 @@ def get_kafka_consumer(topic: str, group_id: str) -> Optional[KafkaConsumer]:
                 topic,
                 bootstrap_servers=KAFKA_BROKER_URL,
                 group_id=group_id,
-                auto_offset_reset='earliest',
+                auto_offset_reset="earliest",
                 enable_auto_commit=True,
-                value_deserializer=lambda v: json.loads(v.decode('utf-8')),
+                value_deserializer=lambda v: json.loads(v.decode("utf-8")),
             )
-            logger.info(f"Kafka Consumer connected successfully to {KAFKA_BROKER_URL}, subscribed to topic '{topic}' with group_id '{group_id}'")
+            logger.info(
+                f"Kafka Consumer connected successfully to {KAFKA_BROKER_URL}, subscribed to topic '{topic}' with group_id '{group_id}'"
+            )
             return consumer
         except NoBrokersAvailable:
             retries += 1
@@ -72,7 +76,13 @@ def get_kafka_consumer(topic: str, group_id: str) -> Optional[KafkaConsumer]:
             logger.error(f"An unexpected error occurred creating Kafka consumer: {e}")
             return None
 
-def send_kafka_message(producer: KafkaProducer, topic: str, message: Dict[str, Any], job_id: Optional[str] = None) -> bool:
+
+def send_kafka_message(
+    producer: KafkaProducer,
+    topic: str,
+    message: Dict[str, Any],
+    job_id: Optional[str] = None,
+) -> bool:
     """
     Sends a message to a specified Kafka topic using the provided producer.
 
@@ -86,18 +96,22 @@ def send_kafka_message(producer: KafkaProducer, topic: str, message: Dict[str, A
         True if the message was sent successfully, False otherwise.
     """
     if not producer:
-        logger.error(f"Cannot send message to topic '{topic}', producer is not available.")
+        logger.error(
+            f"Cannot send message to topic '{topic}', producer is not available."
+        )
         return False
 
-    if 'timestamp' not in message:
-        message['timestamp'] = time.time()
+    if "timestamp" not in message:
+        message["timestamp"] = time.time()
 
     log_prefix = f"[Job {job_id}] " if job_id else ""
 
     try:
         future = producer.send(topic, value=message)
         record_metadata = future.get(timeout=10)
-        logger.info(f"{log_prefix}Message sent successfully to topic '{topic}' at offset {record_metadata.offset}")
+        logger.info(
+            f"{log_prefix}Message sent successfully to topic '{topic}' at offset {record_metadata.offset}"
+        )
         producer.flush()
         return True
     except Exception as e:
