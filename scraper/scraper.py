@@ -286,7 +286,7 @@ def scrape_linkedin_jobs(
                         all_jobs_data.append(job_data)
                         jobs_scraped_count += 1
 
-                        percentage = 5.0 + min(85.0, (jobs_scraped_count / total_jobs_to_scrape) * 85.0)
+                        percentage = 5.0 + min(75.0, (jobs_scraped_count / total_jobs_to_scrape) * 75.0)
                         percentage = round(percentage, 2)
 
                         progress_message = f"Scraped job {jobs_scraped_count}/{total_jobs_to_scrape}: {job_data['title']}"
@@ -320,7 +320,7 @@ def scrape_linkedin_jobs(
               break
 
     logger.info(f"[Job {job_id}] Scraping finished. Total jobs collected: {len(all_jobs_data)} (Target was {max_jobs})")
-    progress_callback(90.0, f"Finished data scraping. Collected {len(all_jobs_data)} jobs.")
+    progress_callback(80.0, f"Finished data scraping. Collected {len(all_jobs_data)} jobs.")
 
     return all_jobs_data
 
@@ -426,12 +426,12 @@ def process_scraping_job(job_data: Dict[str, Any], producer):
         )
 
         logger.info(f"[Job {job_id}] Scraping process completed. Saving results...")
-        kafka_progress_reporter(95.0, "Saving scraped data...")
+        kafka_progress_reporter(85.0, "Saving scraped data...")
 
         save_to_json(scraped_data, output_path, job_id)
 
         logger.info(f"[Job {job_id}] Scraper job phase completed. Sending loading request to data processing.")
-        kafka_progress_reporter(98.0, "Requesting data processing...")
+        kafka_progress_reporter(88.0, "Requesting data processing...")
 
         send_kafka_message(producer, KAFKA_PROCESSING_TOPIC, {
             "job_id": job_id,
@@ -440,7 +440,7 @@ def process_scraping_job(job_data: Dict[str, Any], producer):
             "data_path": output_path
         }, job_id)
 
-        kafka_progress_reporter(100.0, "Scraping and processing request completed successfully.")
+        kafka_progress_reporter(90, "Scraping and processing request completed successfully.")
         logger.info(f"[Job {job_id}] Successfully completed.")
 
     except Exception as e:
