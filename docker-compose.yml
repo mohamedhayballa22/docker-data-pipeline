@@ -131,12 +131,6 @@ services:
       - KAFKA_BROKER_URL=kafka:9092
       - DATABASE_URL=${DATABASE_URL}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - JOB_TITLES=${JOB_TITLES}
-      - LOCATION=${LOCATION}
-      - TIME_FILTER=${TIME_FILTER}
-      - MAX_JOBS=${MAX_JOBS}
-      - OUTPUT_DIR=/app/data
-      - OUTPUT_FILENAME=${OUTPUT_FILENAME}
       - ENVIRONMENT=${ENVIRONMENT}
     networks:
       - default
