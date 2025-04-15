@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Literal
 from datetime import date, datetime
 from sqlalchemy import (
     Column,
@@ -14,7 +14,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 import os
 
 # SQLAlchemy setup
@@ -83,3 +83,9 @@ class JobItem(BaseModel):
     skills: List[SkillItem] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+class PipelineTriggerRequest(BaseModel):
+    job_titles: str = Field(..., min_length=1, description="Comma-separated string of job titles to search for.")
+    location: str = Field(..., min_length=1, description="Location for the job search (e.g., 'Paris', 'Bordeaux').")
+    time_filter: Literal["24h", "1w", "1m"] = Field(..., description="Time filter for job postings ('24h', '1w', or '1m').")
+    max_jobs: int = Field(..., gt=0, description="Maximum number of jobs to retrieve per job title.")
