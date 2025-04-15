@@ -86,7 +86,7 @@ def process_job_listing(session, job_data: dict, existing_job_keys: set):
         location=job_data["location"].strip(),
         job_url=job_data.get("url"),
         date_posted=parse_date(job_data.get("date_posted")),
-        date_scraped=datetime.now().date(),
+        date_scraped=datetime.now(),
         progress="Haven't Applied",
     )
 
