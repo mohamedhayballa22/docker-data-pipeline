@@ -363,14 +363,14 @@ def process_scraping_job(job_data: Dict[str, Any], producer):
     kafka_progress_reporter(0.0, "Initializing...")
 
     google_api_key = parameters.get("GOOGLE_API_KEY")
-    job_titles_str = parameters.get("JOB_TITLES")
-    location = parameters.get("LOCATION")
-    time_filter = parameters.get("TIME_FILTER")
-    max_jobs_str = parameters.get("MAX_JOBS")
+    job_titles_str = parameters.get("job_titles")
+    location = parameters.get("location")
+    time_filter = parameters.get("time_filter")
+    max_jobs_str = parameters.get("max_jobs")
     output_dir = "/app/data"
 
     if not job_titles_str or not location or not max_jobs_str:
-        error_msg = "Missing required parameters: JOB_TITLES, LOCATION, and MAX_JOBS are required."
+        error_msg = "Missing required parameters: job_titles, location, and max_jobs are required."
         logger.error(f"[Job {job_id}] {error_msg}")
         send_kafka_message(producer, KAFKA_NOTIFICATIONS_TOPIC, {
             "job_id": job_id, "event_type": "job_failed", "source": "scraper",
@@ -382,14 +382,14 @@ def process_scraping_job(job_data: Dict[str, Any], producer):
     try:
         job_titles = [title.strip() for title in job_titles_str.split(',') if title.strip()]
         if not job_titles:
-             raise ValueError("JOB_TITLES cannot be empty after splitting and stripping.")
+             raise ValueError("job_titles cannot be empty after splitting and stripping.")
         max_jobs = int(max_jobs_str)
         if max_jobs <= 0:
-            raise ValueError("MAX_JOBS must be a positive integer.")
+            raise ValueError("max_jobs must be a positive integer.")
         output_filename = f"{job_id}_jobs.json"
         output_path = os.path.join(output_dir, output_filename)
     except ValueError as e:
-        error_msg = f"Invalid parameter format (MAX_JOBS must be a positive integer, JOB_TITLES cannot be empty): {e}"
+        error_msg = f"Invalid parameter format (max_jobs must be a positive integer, job_titles cannot be empty): {e}"
         logger.error(f"[Job {job_id}] {error_msg}")
         send_kafka_message(producer, KAFKA_NOTIFICATIONS_TOPIC, {
             "job_id": job_id, "event_type": "job_failed", "source": "scraper",
