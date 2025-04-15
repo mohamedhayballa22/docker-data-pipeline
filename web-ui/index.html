@@ -12,25 +12,23 @@
     <div class="container my-4">
         <header class="mb-4">
             <div class="d-flex justify-content-between align-items-center">
-                <h1>Job Board</h1>
-                <button id="openPipelineModalBtn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#pipelineConfigModal">
-                    <span id="runPipelineBtn">Configure and Run Pipeline</span>
-                    <span id="loadingSpinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status"></span>
-                </button>
+                 <h1>Job Board</h1>
+                 <button id="openPipelineModalBtn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#pipelineConfigModal">
+                     <span id="runPipelineBtn">Configure and Run Pipeline</span>
+                     <span id="loadingSpinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status"></span>
+                 </button>
             </div>
-
-            <div id="progressContainer" class="mt-3 d-none">
-                <div class="progress" role="progressbar" aria-label="Pipeline Progress" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
-                    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%">0%</div>
-                </div>
-                <p id="progressDescription" class="text-center mt-2 text-muted"></p>
+             <div id="progressContainer" class="mt-3 d-none">
+                  <div class="progress" role="progressbar" aria-label="Pipeline Progress" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                     <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%">0%</div>
+                 </div>
+                 <p id="progressDescription" class="text-center mt-2 text-muted"></p>
             </div>
-
             <div id="pipelineSuccess" class="alert alert-success d-none mt-3" role="alert">
-                Pipeline completed successfully! Displaying updated job data.
+                 Pipeline completed successfully! Displaying updated job data.
             </div>
             <div id="pipelineError" class="alert alert-danger d-none mt-3" role="alert">
-                Error running pipeline. Please try again.
+                 Error running pipeline. Please try again.
             </div>
         </header>
 
@@ -44,69 +42,104 @@
         </div>
     </div>
 
-    <!-- Pipeline Configuration Modal -->
     <div class="modal fade" id="pipelineConfigModal" tabindex="-1" aria-labelledby="pipelineConfigModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
+         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header">
+                 <div class="modal-header">
                     <h5 class="modal-title" id="pipelineConfigModalLabel">Configure Pipeline Job</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <form id="pipelineConfigForm">
                         <div id="modalAlertContainer" class="mb-3"></div>
-
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="location" class="form-label">Location <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="location" value="Paris" required>
-                            </div>
+                         <div class="row mb-3">
                              <div class="col-md-6">
-                                <label for="maxJobs" class="form-label">Max Jobs (per title) <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" id="maxJobs" min="1" value="10" required>
+                                 <label for="location" class="form-label">Location <span class="text-danger">*</span></label>
+                                 <input type="text" class="form-control" id="location" value="Paris" required>
                             </div>
-                        </div>
-
-
-                        <div class="mb-3">
-                            <label class="form-label d-block">Time Filter <span class="text-danger">*</span></label>
-                             <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="timeFilter" id="timeFilter24h" value="24h" checked>
-                                <label class="form-check-label" for="timeFilter24h">Last 24 hours</label>
+                              <div class="col-md-6">
+                                 <label for="maxJobs" class="form-label">Max Jobs (per title) <span class="text-danger">*</span></label>
+                                 <input type="number" class="form-control" id="maxJobs" min="1" value="10" required>
                             </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="timeFilter" id="timeFilter1w" value="1w">
-                                <label class="form-check-label" for="timeFilter1w">Last week</label>
+                         </div>
+                          <div class="mb-3">
+                             <label class="form-label d-block">Time Filter <span class="text-danger">*</span></label>
+                              <div class="form-check form-check-inline">
+                                 <input class="form-check-input" type="radio" name="timeFilter" id="timeFilter24h" value="24h" checked>
+                                 <label class="form-check-label" for="timeFilter24h">Last 24 hours</label>
                             </div>
                              <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="timeFilter" id="timeFilter1m" value="1m">
-                                <label class="form-check-label" for="timeFilter1m">Last month</label>
+                                 <input class="form-check-input" type="radio" name="timeFilter" id="timeFilter1w" value="1w">
+                                 <label class="form-check-label" for="timeFilter1w">Last week</label>
                             </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Job Titles <span class="text-danger">*</span> <span class="text-muted small">(add at least one)</span></label>
-                            <div class="input-group mb-2">
-                                <input type="text" class="form-control" id="newJobTitle" placeholder="e.g., Data Engineer">
-                                <button class="btn btn-outline-secondary" type="button" id="addJobTitleBtn">Add</button>
+                              <div class="form-check form-check-inline">
+                                 <input class="form-check-input" type="radio" name="timeFilter" id="timeFilter1m" value="1m">
+                                 <label class="form-check-label" for="timeFilter1m">Last month</label>
                             </div>
-                            <ul id="jobTitlesList" class="list-group">
+                         </div>
+                          <div class="mb-3">
+                             <label class="form-label">Job Titles <span class="text-danger">*</span> <span class="text-muted small">(add at least one)</span></label>
+                             <div class="input-group mb-2">
+                                 <input type="text" class="form-control" id="newJobTitle" placeholder="e.g., Data Engineer">
+                                 <button class="btn btn-outline-secondary" type="button" id="addJobTitleBtn">Add</button>
+                            </div>
+                             <ul id="jobTitlesList" class="list-group">
                             </ul>
-                            <input type="hidden" id="jobTitlesHidden" required>
-                        </div>
-
+                             <input type="hidden" id="jobTitlesHidden" required>
+                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="submitPipelineConfigBtn" form="pipelineConfigForm">
-                        <span id="submitBtnText">Run Pipeline</span>
-                        <span id="submitSpinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status"></span>
+                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                     <button type="submit" class="btn btn-primary" id="submitPipelineConfigBtn" form="pipelineConfigForm">
+                         <span id="submitBtnText">Run Pipeline</span>
+                         <span id="submitSpinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status"></span>
                     </button>
                 </div>
             </div>
         </div>
     </div>
+
+    <div class="modal fade" id="progressUpdateModal" tabindex="-1" aria-labelledby="progressUpdateModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="progressUpdateModalLabel">Update Progress</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted">Select the current stage for this application:</p>
+                    <div id="progressOptionsContainer">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveProgressBtn">Save Progress</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteConfirmModalLabel">Confirm Deletion</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete :</p>
+                    <p><strong id="deleteJobTitleConfirm"></strong>?</p>
+                    <p class="text-danger small">This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Confirm Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="src/app.js"></script>
