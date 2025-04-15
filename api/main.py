@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException, Depends, WebSocket, WebSocketDisconn
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
-from api.models import JobItem, get_db, Job
+from api.models import JobItem, get_db, Job, PipelineTriggerRequest
 from logger.logger import get_logger
 from api.kafka_client import (
     create_kafka_producer,
@@ -102,22 +102,32 @@ def get_data(db: Session = Depends(get_db)):
         )
 
 @app.post("/trigger-job-pipeline", status_code=202)
-async def trigger_job_pipeline():
+async def trigger_job_pipeline(payload: PipelineTriggerRequest):
     """
-    Generates a job ID and sends a 'job requested' event to Kafka.
+    Accepts job parameters, generates a job ID, adds the API key,
+    and sends a 'job requested' event to Kafka.
     """
-    logger.info("Received request to trigger job pipeline via Kafka.")
+    logger.info(f"Received request to trigger job pipeline with payload: {payload.model_dump()}")
+
+    google_api_key = os.getenv("GOOGLE_API_KEY")
+    if not google_api_key:
+        logger.error("CRITICAL: GOOGLE_API_KEY environment variable is not set.")
+        raise HTTPException(
+            status_code=500,
+            detail="Server configuration error: Missing Google API Key."
+        )
 
     job_id = generate_job_id()
     logger.info(f"Generated Job ID: {job_id}")
 
     scraping_params = {
-        "GOOGLE_API_KEY": os.getenv("GOOGLE_API_KEY"),
-        "JOB_TITLES": os.getenv("JOB_TITLES", "Data Scientist"),
-        "LOCATION": os.getenv("LOCATION", "USA"),
-        "TIME_FILTER": os.getenv("TIME_FILTER", "7d"),
-        "MAX_JOBS": int(os.getenv("MAX_JOBS", "50")),
+        "GOOGLE_API_KEY": google_api_key,
+        "job_titles": payload.job_titles,
+        "location": payload.location,
+        "time_filter": payload.time_filter,
+        "max_jobs": payload.max_jobs,
     }
+    logger.debug(f"Constructed scraping parameters for job {job_id}: {scraping_params}")
 
     # Construct Kafka Message
     message = {
@@ -131,12 +141,13 @@ async def trigger_job_pipeline():
     try:
         success = send_kafka_message(SCRAPING_JOBS_TOPIC, message)
         if not success:
+             logger.error(f"Failed to publish job request for {job_id} to Kafka topic '{SCRAPING_JOBS_TOPIC}'. send_kafka_message returned False.")
              raise HTTPException(status_code=503, detail="Failed to publish job request to Kafka.")
     except KafkaError as e:
-        logger.error(f"Kafka error during job trigger for {job_id}: {e}")
-        raise HTTPException(status_code=503, detail="Service unavailable: Could not connect to Kafka.")
+        logger.error(f"Kafka error during job trigger for {job_id} on topic '{SCRAPING_JOBS_TOPIC}': {e}")
+        raise HTTPException(status_code=503, detail="Service unavailable: Could not connect or publish to Kafka.")
     except Exception as e:
-        logger.error(f"Unexpected error during job trigger for {job_id}: {e}")
+        logger.error(f"Unexpected error during job trigger for {job_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error during job trigger.")
 
     with job_status_lock:
@@ -148,10 +159,8 @@ async def trigger_job_pipeline():
         }
         logger.debug(f"Initialized status for job {job_id}: {job_statuses[job_id]}")
 
-
     logger.info(f"Job {job_id} successfully requested via Kafka topic '{SCRAPING_JOBS_TOPIC}'.")
     return {"message": "Job pipeline trigger request accepted.", "job_id": job_id}
-
 
 @app.get("/jobs/{job_id}/status")
 def get_job_status(job_id: str):
