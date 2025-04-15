@@ -89,3 +89,6 @@ class PipelineTriggerRequest(BaseModel):
     location: str = Field(..., min_length=1, description="Location for the job search (e.g., 'Paris', 'Bordeaux').")
     time_filter: Literal["24h", "1w", "1m"] = Field(..., description="Time filter for job postings ('24h', '1w', or '1m').")
     max_jobs: int = Field(..., gt=0, description="Maximum number of jobs to retrieve per job title.")
+
+class ProgressUpdate(BaseModel):
+    progress: str
