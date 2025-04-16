@@ -9,4 +9,4 @@ COPY logger/ /app/logger/
 
 COPY loader/ /app/
 
-CMD ["tail", "-f", "/dev/null"]
+CMD ["python", "loader.py"]

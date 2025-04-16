@@ -1,6 +1,73 @@
 version: '3'
 
 services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_log:/var/lib/zookeeper/log
+    networks:
+      - default
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - default
+
+  kafka-setup:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - kafka
+    volumes:
+      - ./kafka-setup:/scripts
+    command: >
+      bash -c "
+        echo 'Waiting for Kafka to be ready...' &&
+        cub kafka-ready -b kafka:9092 1 30 &&
+        echo 'Creating Kafka topics...' &&
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --partitions 3 --replication-factor 1 --topic scraping-jobs && \
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --partitions 3 --replication-factor 1 --topic job-status-updates && \ # <-- ADDED LINE
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --partitions 3 --replication-factor 1 --topic data-processing && \
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --partitions 3 --replication-factor 1 --topic system-notifications && \
+        echo 'Kafka topics created/verified.'
+      "
+    networks:
+      - default
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - "9999:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    depends_on:
+      - kafka
+      - zookeeper
+    networks:
+      - default
+
   db:
     image: postgres:latest
     environment:
@@ -24,19 +91,12 @@ services:
       - pipeline_data:/app/data
       - ./logs:/app/logs
     environment:
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - JOB_TITLES=${JOB_TITLES}
-      - LOCATION=${LOCATION}
-      - TIME_FILTER=${TIME_FILTER}
-      - NUM_PAGES=${NUM_PAGES}
-      - MAX_JOBS=${MAX_JOBS}
-      - OUTPUT_DIR=/app/data
-      - OUTPUT_FILENAME=${OUTPUT_FILENAME}
+      - KAFKA_BROKER_URL=kafka:9092
       - ENVIRONMENT=${ENVIRONMENT}
     restart: unless-stopped
     networks:
       - default
-    
+
   loader:
     build:
       context: .
@@ -45,6 +105,7 @@ services:
       - pipeline_data:/app/data
       - ./logs:/app/logs
     environment:
+      - KAFKA_BROKER_URL=kafka:9092
       - DATABASE_URL=${DATABASE_URL}
       - ENVIRONMENT=${ENVIRONMENT}
     depends_on:
@@ -58,7 +119,6 @@ services:
       context: .
       dockerfile: ./api/Dockerfile
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
       - .:/app
       - ./logs:/app/logs
     command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
@@ -66,9 +126,11 @@ services:
       - "8000:8000"
     depends_on:
       - db
+      - kafka
     environment:
+      - KAFKA_BROKER_URL=kafka:9092
       - DATABASE_URL=${DATABASE_URL}
-      - COMPOSE_PROJECT_NAME=docker-data-pipeline
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - ENVIRONMENT=${ENVIRONMENT}
     networks:
       - default
@@ -85,6 +147,9 @@ services:
 volumes:
   postgres_data:
   pipeline_data:
+  zookeeper_data:
+  zookeeper_log:
+  kafka_data:
 
 networks:
   default:

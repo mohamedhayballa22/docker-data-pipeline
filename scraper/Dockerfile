@@ -9,4 +9,4 @@ COPY logger/ /app/logger/
 
 COPY scraper/ /app/
 
-CMD ["tail", "-f", "/dev/null"]
+CMD ["python", "scraper.py"]

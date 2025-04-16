@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Literal
 from datetime import date, datetime
 from sqlalchemy import (
     Column,
@@ -14,7 +14,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 import os
 
 # SQLAlchemy setup
@@ -52,14 +52,15 @@ class Job(Base):
     # Relationship with skills
     skills = relationship("JobSkill", back_populates="job")
 
+
 class JobSkill(Base):
-    __tablename__ = 'job_skills'
-    __table_args__ = {'schema': 'core'}
-    
+    __tablename__ = "job_skills"
+    __table_args__ = {"schema": "core"}
+
     job_skill_id = Column(Integer, primary_key=True, autoincrement=True)
-    job_id = Column(Integer, ForeignKey('core.jobs.job_id'))
+    job_id = Column(Integer, ForeignKey("core.jobs.job_id"))
     skill = Column(String(100))
-    
+
     # Relationship with job
     job = relationship("Job", back_populates="skills")
 
@@ -83,3 +84,26 @@ class JobItem(BaseModel):
     skills: List[SkillItem] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PipelineTriggerRequest(BaseModel):
+    job_titles: str = Field(
+        ...,
+        min_length=1,
+        description="Comma-separated string of job titles to search for.",
+    )
+    location: str = Field(
+        ...,
+        min_length=1,
+        description="Location for the job search (e.g., 'Paris', 'Bordeaux').",
+    )
+    time_filter: Literal["24h", "1w", "1m"] = Field(
+        ..., description="Time filter for job postings ('24h', '1w', or '1m')."
+    )
+    max_jobs: int = Field(
+        ..., gt=0, description="Maximum number of jobs to retrieve per job title."
+    )
+
+
+class ProgressUpdate(BaseModel):
+    progress: str
